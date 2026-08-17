@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2a78d6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AviCount">
+<link rel="manifest" href='data:application/manifest+json,{"name":"AviCount","short_name":"AviCount","display":"standalone","background_color":"%23f9f9f7","theme_color":"%232a78d6","start_url":".","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%232a78d6%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2752%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27 font-weight=%27bold%27%3EAv%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
+<title>AviCount</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1: #fcfcfb; --page: #f9f9f7; --ink-1: #0b0b0b; --ink-2: #52514e;
+    --muted: #898781; --grid: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --accent: #2a78d6; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-text: #006300; --warning: #fab219; --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface-1: #1a1a19; --page: #0d0d0d; --ink-1: #ffffff; --ink-2: #c3c2b7;
+      --grid: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+      --accent: #3987e5; --good-text: #0ca30c;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page); color: var(--ink-1);
+    max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100dvh;
+  }
+  header { padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.2px; }
+  header h1 span { color: var(--accent); }
+  .badge {
+    font-size: 11px; font-weight: 600; color: var(--ink-2);
+    border: 1px solid var(--border); border-radius: 99px; padding: 3px 9px; background: var(--surface-1);
+  }
+  main { flex: 1; overflow-y: auto; padding: 0 16px 84px; }
+  nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px; display: flex; background: var(--surface-1);
+    border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav button {
+    flex: 1; background: none; border: none; padding: 10px 0 12px; font-size: 11px;
+    color: var(--muted); cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; gap: 3px; font-family: inherit;
+  }
+  nav[hidden] { display: none; }   /* si no, display:flex gana sobre el atributo */
+  nav button.active { color: var(--accent); font-weight: 600; }
+  nav button svg { width: 22px; height: 22px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .sub { font-size: 12.5px; color: var(--ink-2); }
+  .mut { font-size: 12px; color: var(--muted); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 14px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; }
+  .tile .v { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin: 2px 0; }
+  .tile .l { font-size: 11.5px; color: var(--ink-2); }
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; border-radius: 99px; padding: 3px 10px 3px 8px; }
+  .status.ok { color: var(--good-text); background: color-mix(in srgb, var(--good) 12%, transparent); }
+  .status.warn { color: var(--ink-1); background: color-mix(in srgb, var(--warning) 20%, transparent); }
+  .status.crit { color: var(--critical); background: color-mix(in srgb, var(--critical) 12%, transparent); }
+  .status.pending { color: var(--ink-2); background: color-mix(in srgb, var(--muted) 14%, transparent); }
+  .btn {
+    display: block; width: 100%; text-align: center; background: var(--accent); color: var(--accent-ink);
+    border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn.secondary { background: var(--surface-1); color: var(--ink-1); border: 1px solid var(--border); }
+  .btn.small { padding: 10px; font-size: 13.5px; border-radius: 10px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .zone-dots { display: flex; gap: 6px; margin: 10px 0 14px; }
+  .zone-dots i { flex: 1; height: 5px; border-radius: 3px; background: var(--grid); }
+  .zone-dots i.done { background: var(--good); }
+  .zone-dots i.now { background: var(--accent); }
+  .capture-box {
+    border: 1.5px dashed var(--baseline); border-radius: 14px; aspect-ratio: 4/3;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    color: var(--muted); background: var(--surface-1); position: relative; overflow: hidden;
+    margin-bottom: 12px; cursor: pointer;
+  }
+  .capture-box canvas, .capture-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .count-big { font-size: 44px; font-weight: 700; letter-spacing: -1px; text-align: center; }
+  .count-lbl { text-align: center; font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+  input, select { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-1); color: var(--ink-1); font-size: 15px; font-family: inherit; margin-top: 4px; }
+  label { font-size: 13px; font-weight: 600; color: var(--ink-2); display: block; margin-top: 12px; }
+  .stepper { display: flex; align-items: center; gap: 10px; justify-content: center; margin: 8px 0 4px; }
+  .stepper button { width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface-1); color: var(--ink-1); font-size: 22px; cursor: pointer; }
+  .stepper input { width: 110px; text-align: center; font-size: 24px; font-weight: 700; }
+  .list-item { padding: 13px 0; border-bottom: 1px solid var(--grid); }
+  .list-item:last-child { border-bottom: none; }
+  .spin { width: 26px; height: 26px; border: 3px solid var(--grid); border-top-color: var(--accent); border-radius: 50%; animation: sp .8s linear infinite; margin: 0 auto; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .hint { font-size: 12.5px; color: var(--ink-2); background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .bar-track { flex: 1; height: 14px; position: relative; }
+  .bar-track .zero { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--baseline); }
+  .bar-track .bar { position: absolute; top: 2px; height: 10px; border-radius: 0 4px 4px 0; }
+  .bar-lbl { font-size: 12px; width: 76px; color: var(--ink-2); flex-shrink: 0; }
+  .bar-val { font-size: 12px; font-weight: 600; width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+  h2.sec { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; }
+  .back { background: none; border: none; color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; font-family: inherit; margin-bottom: 10px; }
+  .toast {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+    background: var(--ink-1); color: var(--page); font-size: 13.5px; font-weight: 500;
+    padding: 10px 18px; border-radius: 99px; opacity: 0; transition: opacity .25s; pointer-events: none;
+    max-width: 90%; text-align: center; z-index: 50;
+  }
+  .toast.show { opacity: .95; }
+  .login-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 24px 80px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Avi<span>Count</span></h1>
+  <span class="badge" id="modeBadge">·</span>
+</header>
+
+<main id="main"></main>
+<nav id="nav" hidden></nav>
+<div class="toast" id="toast"></div>
+
+<input type="file" accept="image/*" capture="environment" id="camInput" hidden>
+<input type="file" accept="video/*" capture="environment" id="vidInput" hidden>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const APP_VERSION = 'v1.4 · 16-ago-2026';
+
+// Proyecto propio (la clave publishable es pública por diseño; los datos
+// están protegidos por RLS y solo se accede vía la API con credenciales).
+const SUPA_URL = 'https://mgabiviiocowkeohuerc.supabase.co';
+const SUPA_KEY = 'sb_publishable_HfCJZBPazo2s7Acgx_IPbA_sHLKP8AS';
+// Google necesita una página https para volver tras el login; abierto como
+// archivo (file://) se usa el código del equipo.
+const sb = (window.supabase && location.protocol.startsWith('http'))
+  ? window.supabase.createClient(SUPA_URL, SUPA_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    })
+  : null;
+
+async function tokenGoogle() {
+  if (!sb) return null;
+  try { return (await sb.auth.getSession()).data.session?.access_token || null; }
+  catch { return null; }
+}
+/* ============ AviCount — PRODUCCIÓN ============
+   Servida por la Edge Function de Supabase que también expone la API.
+   Cada foto guardada construye el dataset de entrenamiento del modelo
+   (aprendizaje continuo): foto + conteo del modelo + corrección humana.
+================================================= */
+
+// La app se sirve como archivo estático (Storage) y habla siempre con
+// la Edge Function, sin importar desde dónde se abra: la URL publicada,
+// el ícono instalado en el celular, o el archivo descargado.
+const API = 'https://mgabiviiocowkeohuerc.supabase.co/functions/v1/avicount';
+const LS = {
+  get: (k, d) => { try { const v = localStorage.getItem('avicount_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  // Devuelve si de verdad se guardó: si el teléfono se queda sin espacio
+  // no podemos decirle al operario que quedó guardado.
+  set: (k, v) => { try { localStorage.setItem('avicount_' + k, JSON.stringify(v)); return true; } catch { return false; } },
+};
+
+// Escapa texto antes de meterlo en el HTML (nombres de galpón, operario…)
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const idUnico = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'c' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
+const state = {
+  view: 'galpones',
+  codigo: LS.get('codigo', ''),
+  googleListo: LS.get('googleListo', false),
+  googleEmail: LS.get('googleEmail', ''),
+  operario: LS.get('operario', ''),
+  modeloUrl: LS.get('modeloUrl', ''),
+  modeloToken: LS.get('modeloToken', ''),
+  galpones: [],
+  sesiones: [],
+  movimientos: [],
+  cargando: false,
+  conteo: null,
+  puerta: null,
+  editGalpon: null,
+};
+
+const TIPOS_MOV = {
+  poblamiento: 'Poblamiento', traslado_entrada: 'Traslado (entrada)',
+  traslado_salida: 'Traslado (salida)', carga_venta: 'Carga / venta',
+  mortalidad: 'Mortalidad', ajuste_manual: 'Ajuste manual',
+};
+
+const $ = s => document.querySelector(s);
+const fmt = n => (n == null || Number.isNaN(n)) ? '—' : Number(n).toLocaleString('es-CL');
+const desv = (est, teo) => (est != null && teo) ? (est - teo) / teo * 100 : null;
+const fecha = ts => ts ? new Date(ts).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+
+function toast(msg, ms = 2600) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function statusChip(pct) {
+  if (pct == null) return `<span class="status pending">Sin conteo</span>`;
+  const a = Math.abs(pct), txt = (pct > 0 ? '+' : '') + pct.toFixed(1) + '%';
+  if (a <= 2) return `<span class="status ok">✓ ${txt}</span>`;
+  if (a <= 5) return `<span class="status warn">⚠ ${txt}</span>`;
+  return `<span class="status crit">✕ ${txt}</span>`;
+}
+
+/* ---------- API ---------- */
+async function api(ruta, body, metodo) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.codigo) headers['x-codigo'] = state.codigo;
+  const jwt = await tokenGoogle();
+  if (jwt) headers['Authorization'] = 'Bearer ' + jwt;
+  const r = await fetch(API + ruta, {
+    method: metodo || (body ? 'POST' : 'GET'),
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (r.status === 401) {
+    let cuerpo = null;
+    try { cuerpo = await r.json(); } catch { /* sin cuerpo */ }
+    if (cuerpo && cuerpo.sin_activar) {
+      // Cuenta de Google válida pero sin activar: pedir el código UNA vez.
+      state.view = 'activarGoogle'; render();
+      const e = new Error('Tu cuenta necesita activarse con el código del equipo');
+      e.status = 401; throw e;
+    }
+    state.codigo = ''; LS.set('codigo', '');
+    if (!jwt) render();
+    const e = new Error('Código incorrecto'); e.status = 401; throw e;
+  }
+  if (!r.ok) { const e = new Error('Error del servidor (' + r.status + ')'); e.status = r.status; throw e; }
+  return r.json();
+}
+
+// Con sesión de Google activada (o código guardado) la app entra directo.
+function tieneCredencial() { return !!state.codigo || state.googleListo; }
+
+/* ---------- Cola offline ----------
+   Guarda lo que no se pudo subir y lo reintenta al volver la señal.
+   Nunca decimos "guardado" si el guardado falló de verdad. */
+function encolar(ruta, body) {
+  const q = LS.get('cola', []);
+  if (q.length >= 40) { toast('Cola llena: conéctate a internet para vaciarla', 4000); return false; }
+  q.push({ qid: idUnico(), ruta, body, ts: Date.now() });
+  if (LS.set('cola', q)) return true;
+  // Sin espacio en el teléfono: el conteo vale más que la foto,
+  // así que soltamos la foto y guardamos el número.
+  if (body && body.foto_b64) {
+    delete body.foto_b64;
+    body.foto_perdida = true;
+    if (LS.set('cola', q)) { toast('Sin espacio: se guardó el conteo, no la foto', 4000); return true; }
+  }
+  q.pop();
+  return false;
+}
+
+// Lo que el servidor rechaza no se borra en silencio: queda registrado
+// para poder reclamarlo (sin la foto, que ocuparía demasiado espacio).
+function guardarDescartado(item) {
+  const d = LS.get('descartados', []);
+  const b = item.body || {};
+  d.unshift({ ruta: item.ruta, zona: b.zona ?? null, galpon_id: b.galpon_id ?? null,
+              conteo: b.conteo_manual ?? b.cantidad ?? null, ts: Date.now() });
+  LS.set('descartados', d.slice(0, 30));
+}
+
+let drenando = false;
+async function drenarCola(silencioso) {
+  if (drenando) return;              // evita subir dos veces lo mismo
+  const q = LS.get('cola', []);
+  if (!q.length) { if (!silencioso) toast('No hay pendientes'); return; }
+  // Los pendientes de una versión anterior no traen identificador. Hay que
+  // asignarlo Y GUARDARLO antes de subir nada: si no, al terminar no se
+  // reconocen como procesados y se vuelven a subir para siempre.
+  let faltaban = false;
+  q.forEach(i => { if (!i.qid) { i.qid = idUnico(); faltaban = true; } });
+  if (faltaban && !LS.set('cola', q)) { toast('Sin espacio para preparar los pendientes', 4000); return; }
+  drenando = true;
+  let ok = 0, descartados = 0;
+  const resto = [];
+  try {
+    // Orden estricto: un cierre no puede subir antes que sus capturas.
+    for (let i = 0; i < q.length; i++) {
+      const item = q[i];
+      try { await api(item.ruta, item.body); ok++; }
+      catch (e) {
+        // Un 4xx no se arregla reintentando: quedaría atascado para siempre.
+        // Pero la falta de señal NO gasta intentos: un fin de semana sin
+        // cobertura no puede borrar el conteo de un galpón.
+        const respondio = typeof e.status === 'number';
+        const irreparable = respondio && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 429;
+        if (respondio) item.intentos = (item.intentos || 0) + 1;
+        if (irreparable || item.intentos > 40) { descartados++; guardarDescartado(item); continue; }
+        resto.push(...q.slice(i));   // se corta y se reintenta el resto entero
+        break;
+      }
+    }
+  } finally {
+    // La cola pudo crecer mientras subíamos: conservamos lo nuevo.
+    const procesados = new Set(q.map(i => i.qid));
+    const nuevos = LS.get('cola', []).filter(i => !procesados.has(i.qid));
+    LS.set('cola', resto.concat(nuevos));
+    drenando = false;
+  }
+  if (ok) toast(`${ok} pendiente(s) subido(s)`);
+  if (descartados) toast(`${descartados} registro(s) no se pudieron subir y se descartaron`, 4500);
+  if (!ok && !descartados && !silencioso) toast(`Sigue sin señal: ${resto.length} pendiente(s)`);
+  if (state.view === 'ajustes' || state.view === 'galpones') { render(); if (ok) cargarEstado(); }
+}
+window.addEventListener('online', () => drenarCola(true));
+
+async function cargarEstado() {
+  state.cargando = true; render();
+  try {
+    const d = await api('/estado');
+    state.galpones = d.galpones || [];
+    state.sesiones = d.sesiones || [];
+    state.movimientos = d.movimientos || [];
+    // El modelo se publica una vez en el servidor y llega a toda la flota.
+    // Se guarda para que siga disponible aunque la app arranque sin señal.
+    if (d.modelo) LS.set('modeloUrlServidor', d.modelo.url || '');
+    state.modeloUrl = LS.get('modeloUrlManual', '') || LS.get('modeloUrlServidor', '') || '';
+    state.modeloVersion = (d.modelo && d.modelo.version) || '';
+  } catch (e) {
+    if (state.codigo) toast('Sin conexión con el servidor: ' + e.message, 3500);
+  }
+  state.cargando = false; render();
+}
+
+/* ---------- Navegación ---------- */
+const tabs = [
+  { id: 'galpones', label: 'Galpones', icon: 'M3 21V8l9-5 9 5v13h-6v-7H9v7H3z' },
+  { id: 'conteo',   label: 'Conteo',   icon: 'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm-8 4h2m12 0h2M12 4v2m0 12v2' },
+  { id: 'historial',label: 'Historial',icon: 'M12 8v5l3 2M12 3a9 9 0 1 0 9 9' },
+  { id: 'ajustes',  label: 'Ajustes',  icon: 'M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm7.4 3a7.4 7.4 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7.5 7.5 0 0 0-2-1.2L14.6 2h-4L10 4.7a7.5 7.5 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7.4 7.4 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1c.6.5 1.3.9 2 1.2l.4 2.7h4l.4-2.7c.7-.3 1.4-.7 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z' },
+];
+
+function renderNav() {
+  $('#nav').hidden = !tieneCredencial() || state.view === 'activarGoogle';
+  $('#nav').innerHTML = tabs.map(t => `
+    <button class="${state.view === t.id || (t.id === 'conteo' && state.view.startsWith('conteo')) || (t.id === 'conteo' && state.view.startsWith('video')) ? 'active' : ''}" onclick="go('${t.id}')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${t.icon}"/></svg>
+      ${t.label}
+    </button>`).join('');
+}
+
+function go(v) { state.view = v; render(); }
+
+function render() {
+  renderNav();
+  $('#modeBadge').textContent = state.modeloUrl ? 'MODELO ACTIVO' : 'SIN MODELO (manual)';
+  if (state.view === 'activarGoogle') return viewActivarGoogle();
+  if (!tieneCredencial()) return viewLogin();
+  const v = state.view;
+  if (v === 'galpones') return viewGalpones();
+  if (v === 'conteo') return viewMetodo();
+  if (v === 'conteoFotos') return viewSeleccionGalpon();
+  if (v === 'conteoZona') return viewZona();
+  if (v === 'conteoResumen') return viewResumen();
+  if (v === 'videoSetup') return viewVideoSetup();
+  if (v === 'videoResultado') return viewVideoResultado();
+  if (v === 'historial') return viewHistorial();
+  if (v === 'ajustes') return viewAjustes();
+  if (v === 'galponForm') return viewGalponForm();
+}
+
+/* ---------- Login ---------- */
+function viewLogin() {
+  $('#main').innerHTML = `
+    <div class="login-wrap">
+      <h2 style="font-size:22px;margin-bottom:6px">Bienvenido a AviCount</h2>
+      <div class="sub" style="margin-bottom:18px">Conteo de aves por visión.</div>
+      ${sb ? `
+      <button class="btn" style="background:var(--surface-1);color:var(--ink-1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:10px" onclick="entrarConGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.2 5.2C40.9 35.6 44 30.3 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
+        Continuar con Google
+      </button>
+      <div class="mut" style="text-align:center;margin:6px 0 2px">Entras una vez y la sesión queda guardada: no vuelve a pedir nada.</div>
+      <div class="row" style="margin:14px 0 2px"><div style="flex:1;height:1px;background:var(--grid)"></div><span class="mut">o con el código del equipo</span><div style="flex:1;height:1px;background:var(--grid)"></div></div>
+      ` : `<div class="hint">Abriendo la app como archivo se entra con el código del equipo. La entrada con Google queda disponible en la versión publicada en internet.</div>`}
+      <label style="margin-top:8px">Código de acceso</label>
+      <input type="password" id="loginCodigo" placeholder="Escribe aquí el código AVI-…" autocomplete="off">
+      <label>Tu nombre</label>
+      <input type="text" id="loginNombre" value="${esc(state.operario)}" placeholder="ej: Juan P.">
+      <button class="btn" style="margin-top:18px" onclick="login()">Entrar</button>
+    </div>`;
+}
+
+async function entrarConGoogle() {
+  try {
+    const destino = location.origin + location.pathname;
+    const { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: destino },
+    });
+    if (error) throw error;
+  } catch (e) {
+    toast('Google aún no está configurado en el servidor. Usa el código mientras tanto.', 5000);
+  }
+}
+
+// Primera vez con Google: se activa la cuenta con el código del equipo.
+function viewActivarGoogle() {
+  $('#main').innerHTML = `
+    <div class="login-wrap">
+      <h2 style="font-size:20px;margin-bottom:6px">Ya casi: activa tu cuenta</h2>
+      <div class="sub" style="margin-bottom:14px">Entraste como <b>${esc(state.googleEmail || 'tu cuenta de Google')}</b>. Para activarla, ingresa el código del equipo <b>una sola vez</b>. Después nunca más se te pedirá nada.</div>
+      <label style="margin-top:0">Código del equipo</label>
+      <input type="password" id="actCodigo" placeholder="AVI-…" autocomplete="off">
+      <button class="btn" style="margin-top:16px" onclick="activarGoogle()">Activar mi cuenta</button>
+      <button class="btn secondary" style="margin-top:10px" onclick="salir()">Salir</button>
+    </div>`;
+}
+
+async function activarGoogle() {
+  const cod = $('#actCodigo').value.trim();
+  if (!cod) return toast('Ingresa el código');
+  try {
+    const jwt = await tokenGoogle();
+    const r = await fetch(API + '/auth/activar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-codigo': cod, 'Authorization': 'Bearer ' + jwt },
+      body: '{}',
+    });
+    const d = await r.json();
+    if (!r.ok) return toast(d.error || 'No se pudo activar', 4000);
+    state.googleListo = true; LS.set('googleListo', true);
+    state.operario = d.nombre || state.googleEmail; LS.set('operario', state.operario);
+    toast('Cuenta activada: no se te volverá a pedir nada');
+    go('galpones'); cargarEstado();
+  } catch (e) { toast('Sin conexión: reintenta', 3500); }
+}
+
+// Al volver del login de Google (o al abrir con sesión viva) se resuelve solo.
+async function revisarSesionGoogle() {
+  if (!sb) return;
+  try {
+    const { data } = await sb.auth.getSession();
+    const ses = data && data.session;
+    if (!ses) return;
+    state.googleEmail = (ses.user && ses.user.email) || '';
+    LS.set('googleEmail', state.googleEmail);
+    if (state.googleListo) { if (!tieneCredencial()) render(); return; }
+    const r = await fetch(API + '/auth/estado', { headers: { 'Authorization': 'Bearer ' + ses.access_token } });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.aprobado) {
+      state.googleListo = true; LS.set('googleListo', true);
+      state.operario = d.nombre || state.googleEmail; LS.set('operario', state.operario);
+      go('galpones'); cargarEstado(); drenarCola(true);
+    } else {
+      state.view = 'activarGoogle'; render();
+    }
+  } catch { /* sin señal: se reintenta al recargar */ }
+}
+
+async function login() {
+  const codigo = $('#loginCodigo').value.trim();
+  const nombre = $('#loginNombre').value.trim();
+  if (!codigo) return toast('Ingresa el código');
+  state.codigo = codigo;
+  try {
+    await api('/login', { hola: true });
+    LS.set('codigo', codigo);
+    state.operario = nombre || 'operario';
+    LS.set('operario', state.operario);
+    toast('Bienvenido');
+    go('galpones');
+    cargarEstado();
+    drenarCola(true);
+  } catch (e) {
+    state.codigo = '';
+    toast(e.message);
+  }
+}
+
+/* ---------- Dashboard ---------- */
+function ultimaSesion(gid) { return state.sesiones.find(s => s.galpon_id === gid && s.estado === 'cerrada'); }
+
+function viewGalpones() {
+  if (state.cargando && !state.galpones.length) {
+    $('#main').innerHTML = `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div><div class="mut" style="margin-top:10px">Cargando…</div></div>`;
+    return;
+  }
+  const activos = state.galpones.filter(g => g.activo);
+  const totalTeo = activos.reduce((a, g) => a + (g.inventario_teorico || 0), 0);
+  const totalEst = activos.reduce((a, g) => a + (ultimaSesion(g.id)?.inventario_estimado ?? 0), 0);
+  $('#main').innerHTML = `
+    <div class="tiles">
+      <div class="tile"><div class="l">Inventario teórico</div><div class="v">${fmt(totalTeo || null)}</div><div class="mut">${activos.length} galpones activos</div></div>
+      <div class="tile"><div class="l">Estimado por conteos</div><div class="v">${fmt(totalEst || null)}</div><div class="mut">Última sesión por galpón</div></div>
+    </div>
+    <h2 class="sec">Desviación por galpón</h2>
+    <div class="card">
+      ${activos.map(g => {
+        const s = ultimaSesion(g.id);
+        const d = s ? desv(s.inventario_estimado, s.inventario_teorico_snapshot ?? g.inventario_teorico) : null;
+        const w = d == null ? 0 : Math.min(Math.abs(d) / 8 * 50, 50);
+        const col = d == null ? 'var(--grid)' : Math.abs(d) <= 2 ? 'var(--good)' : Math.abs(d) <= 5 ? 'var(--warning)' : 'var(--critical)';
+        return `<div class="bar-row">
+          <span class="bar-lbl">${esc(g.nombre)}</span>
+          <div class="bar-track"><span class="zero"></span>
+            ${d != null ? `<span class="bar" style="background:${col};width:${w}%;${d < 0 ? 'right:50%;border-radius:4px 0 0 4px;' : 'left:50%;'}"></span>` : ''}
+          </div>
+          <span class="bar-val">${d != null ? (d > 0 ? '+' : '') + d.toFixed(1) + '%' : '—'}</span>
+        </div>`;
+      }).join('') || '<div class="mut">Agrega galpones en Ajustes.</div>'}
+      <div class="mut" style="margin-top:10px">Último conteo vs. teórico. Alerta: ±2% ✓ · ±5% ⚠ · &gt;5% ✕</div>
+    </div>
+    <h2 class="sec">Galpones</h2>
+    ${activos.map(g => {
+      const s = ultimaSesion(g.id);
+      const d = s ? desv(s.inventario_estimado, s.inventario_teorico_snapshot ?? g.inventario_teorico) : null;
+      return `<div class="card row">
+        <div>
+          <h3>${esc(g.nombre)}</h3>
+          <div class="sub">Teórico ${fmt(g.inventario_teorico)} · Estimado ${s ? fmt(s.inventario_estimado) : '—'}</div>
+          <div class="mut">${s ? 'Último conteo: ' + fecha(s.cerrada_at) : 'Sin conteos aún'} · ${g.num_zonas} zonas</div>
+        </div>
+        ${statusChip(d)}
+      </div>`;
+    }).join('')}
+    <button class="btn" onclick="go('conteo')" style="margin-top:6px">Iniciar conteo</button>
+  `;
+}
+
+/* ---------- Elegir método ---------- */
+function viewMetodo() {
+  const sinModelo = !state.modeloUrl;
+  $('#main').innerHTML = `
+    <h2 class="sec">Nuevo conteo — elige el método</h2>
+    <div class="card" style="cursor:pointer" onclick="go('conteoFotos')">
+      <div class="row"><h3>📷 Fotos por zona</h3><span style="color:var(--accent);font-size:20px">›</span></div>
+      <div class="sub">Una foto por zona. ${sinModelo ? 'Sin modelo aún: cuentas tú y la foto queda guardada para entrenar el modelo.' : 'El modelo cuenta y tú corriges si hace falta.'}</div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="iniciarVideo('recorrido')">
+      <div class="row"><h3>🎥 Video recorriendo el galpón</h3><span style="color:var(--accent);font-size:20px">›</span></div>
+      <div class="sub">${sinModelo
+        ? 'Graba caminando por el pasillo. El video queda guardado como material de entrenamiento, la app extrae fotos para el dataset, y puedes anotar tu conteo. Cuando el modelo esté entrenado, este mismo botón contará solo.'
+        : 'Graba caminando por el pasillo; el modelo escanea y cuenta.'}</div>
+    </div>
+    <div class="card" style="cursor:pointer" onclick="iniciarVideo('puerta')">
+      <div class="row"><h3>🚪 Movimiento en puerta (traslado)</h3><span style="color:var(--accent);font-size:20px">›</span></div>
+      <div class="sub">${sinModelo ? 'Registra el conteo manual del movimiento (el video con modelo llega después).' : 'Video fijo en el paso: conteo exacto del movimiento.'}</div>
+    </div>
+    ${sinModelo ? `<div class="hint">Aún no hay modelo entrenado. La app ya sirve igual: cada foto que guardes construye el dataset con el que se entrena — así el sistema "aprende" del uso real.</div>` : ''}
+  `;
+}
+
+/* ---------- Conteo por fotos ---------- */
+function viewSeleccionGalpon() {
+  $('#main').innerHTML = `
+    <button class="back" onclick="go('conteo')">‹ Volver</button>
+    <h2 class="sec">Conteo por fotos — elige galpón</h2>
+    ${state.galpones.filter(g => g.activo).map(g => `
+      <div class="card row" style="cursor:pointer" onclick="iniciarConteo('${g.id}')">
+        <div><h3>${esc(g.nombre)}</h3><div class="sub">${g.num_zonas} zonas · factor ${g.factor_calibracion}</div></div>
+        <span style="color:var(--accent);font-size:20px">›</span>
+      </div>`).join('')}
+    <div class="hint">Recorre el galpón siempre en el mismo orden de zonas y repite los encuadres.</div>
+  `;
+}
+
+async function iniciarConteo(gid) {
+  const g = state.galpones.find(x => x.id === gid);
+  state.conteo = { galpon: g, sesionId: null, zonaActual: 0, capturas: Array(g.num_zonas).fill(null), procesando: false, guardando: false };
+  go('conteoZona');
+  try {
+    const r = await api('/sesiones', { galpon_id: g.id, operario: state.operario, metodo: 'fotos' });
+    state.conteo.sesionId = r.id;
+  } catch { toast('Sin conexión: el conteo se guardará al recuperar señal'); }
+}
+
+function viewZona() {
+  const c = state.conteo; if (!c) return go('conteo');
+  const g = c.galpon;
+  const cap = c.capturas[c.zonaActual];
+  $('#main').innerHTML = `
+    <button class="back" onclick="go('conteo')">‹ Salir</button>
+    <div class="row"><h3 style="font-size:17px">${esc(g.nombre)} — Zona ${c.zonaActual + 1} de ${g.num_zonas}</h3></div>
+    <div class="zone-dots">${c.capturas.map((z, i) => `<i class="${z ? 'done' : i === c.zonaActual ? 'now' : ''}"></i>`).join('')}</div>
+    <div class="capture-box" id="capBox" onclick="${cap || c.procesando ? '' : 'abrirCamara()'}">
+      ${c.procesando ? '<div class="spin"></div><div class="mut">Contando aves…</div>' :
+        cap ? `<canvas id="capCanvas"></canvas>` :
+        `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+         <div style="font-size:14px">Tocar para fotografiar la zona</div>
+         <div class="mut">Mismo encuadre de siempre: desde el pasillo hacia la pared</div>`}
+    </div>
+    ${cap ? `
+      <div class="count-big">${cap.manual ?? cap.detectado ?? 0}</div>
+      <div class="count-lbl">${cap.detectado != null
+        ? `el modelo detectó ${cap.detectado} (confianza ${(cap.confianza * 100).toFixed(0)}%)${cap.manual != null && cap.manual !== cap.detectado ? ' · corregido a ' + cap.manual : ''} — corrige si no calza`
+        : 'sin modelo: ingresa el conteo si lo hiciste, o guarda solo la foto (0 = sin conteo)'}</div>
+      <div class="stepper">
+        <button onclick="ajustar(-1)">−</button>
+        <input type="number" inputmode="numeric" id="manualInput" value="${cap.manual ?? cap.detectado ?? 0}" onchange="setManual(this.value)">
+        <button onclick="ajustar(1)">+</button>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn secondary small" onclick="repetirFoto()">Repetir foto</button>
+        <button class="btn small" ${c.guardando ? 'disabled' : ''} onclick="guardarZona()">${c.guardando ? 'Guardando…' : (c.zonaActual + 1 < g.num_zonas ? 'Guardar y seguir ›' : 'Guardar y resumen ›')}</button>
+      </div>` : ''}
+  `;
+  if (cap) dibujarCaptura(cap);
+}
+
+function abrirCamara() { $('#camInput').click(); }
+
+$('#camInput').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file || !state.conteo) return;
+  const c = state.conteo;
+  c.procesando = true; render();
+  try {
+    const { img, b64 } = await comprimirImagen(file);
+    let det = { detectado: null, confianza: null, boxes: [], detecciones: null };
+    if (state.modeloUrl) {
+      try { det = await inferir(b64, img); }
+      catch (err) { toast('Modelo no disponible: ingresa el conteo a mano'); }
+    }
+    c.capturas[c.zonaActual] = { img, b64, ...det, manual: null, cliente_id: idUnico() };
+  } catch (err) {
+    // Foto ilegible (formato raro, archivo cortado): avisar y dejar reintentar,
+    // nunca quedarse con el spinner girando para siempre.
+    toast('No se pudo leer la foto, tómala de nuevo', 3500);
+  } finally {
+    c.procesando = false; render();
+  }
+});
+
+function comprimirImagen(file) {
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const maxW = 1280, sc = Math.min(1, maxW / img.naturalWidth);
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.naturalWidth * sc); cv.height = Math.round(img.naturalHeight * sc);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        // Se devuelve el lienzo reducido, no la foto original: una foto de
+        // celular ocupa ~48 MB en memoria y se guardan todas las zonas.
+        res({ img: cv, b64: cv.toDataURL('image/jpeg', 0.8).split(',')[1] });
+      } catch (e) { rej(e); }
+      finally { URL.revokeObjectURL(url); }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('imagen ilegible')); };
+    img.src = url;
+  });
+}
+
+async function inferir(b64, img) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (state.modeloToken) headers['Authorization'] = 'Bearer ' + state.modeloToken;
+  const r = await fetch(state.modeloUrl, { method: 'POST', headers, body: JSON.stringify({ image_b64: b64 }) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const d = await r.json();
+  const preds = d.predictions || [];
+  const W = d.image?.width || img.width, H = d.image?.height || img.height;
+  return {
+    detectado: preds.length,
+    confianza: preds.length ? preds.reduce((a, p) => a + p.confidence, 0) / preds.length : 0,
+    boxes: preds.map(p => ({ x: (p.x - p.width / 2) / W, y: (p.y - p.height / 2) / H, w: p.width / W, h: p.height / H })),
+    detecciones: preds,
+    modelo_version: d.model_version,
+  };
+}
+
+function dibujarCaptura(cap) {
+  const cv = document.getElementById('capCanvas'); if (!cv) return;
+  cv.width = cap.img.width; cv.height = cap.img.height;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(cap.img, 0, 0);
+  ctx.lineWidth = Math.max(2, cv.width / 400); ctx.strokeStyle = '#2a78d6';
+  (cap.boxes || []).forEach(b => ctx.strokeRect(b.x * cv.width, b.y * cv.height, b.w * cv.width, b.h * cv.height));
+}
+
+function setManual(v) { const cap = state.conteo.capturas[state.conteo.zonaActual]; cap.manual = Math.max(0, parseInt(v) || 0); render(); }
+function ajustar(d) { const cap = state.conteo.capturas[state.conteo.zonaActual]; cap.manual = Math.max(0, (cap.manual ?? cap.detectado ?? 0) + d); render(); }
+function repetirFoto() {
+  const c = state.conteo, cap = c.capturas[c.zonaActual];
+  c.reemplaza = c.reemplaza || {};
+  if (cap && cap.subida) {
+    // Ya está en el servidor: la foto nueva la reemplaza allá.
+    c.reemplaza[c.zonaActual] = cap.cliente_id;
+  } else if (cap && cap.encolada) {
+    // Todavía no llegó al servidor: se saca de la cola. Si no, la vieja
+    // subiría después y la zona quedaría contada dos veces.
+    const q = LS.get('cola', []).filter(i =>
+      !(i.ruta === '/capturas' && i.body && i.body.cliente_id === cap.cliente_id));
+    LS.set('cola', q);
+    if (cap.reemplazaba) c.reemplaza[c.zonaActual] = cap.reemplazaba;
+    else delete c.reemplaza[c.zonaActual];
+  }
+  c.capturas[c.zonaActual] = null; render();
+}
+
+async function guardarZona() {
+  const c = state.conteo, cap = c.capturas[c.zonaActual];
+  if (!cap || c.guardando) return;
+  c.guardando = true; render();
+  const body = {
+    cliente_id: cap.cliente_id,   // el servidor descarta repetidos
+    reemplaza_cliente_id: (c.reemplaza && c.reemplaza[c.zonaActual]) || null,
+    // Guardar con un conteo del modelo en pantalla ES una revisión, aunque
+    // el operario no cambie el número: esas fotos son las que permiten
+    // medir cuánto se equivoca cada versión del modelo.
+    revisada: cap.detectado != null || cap.manual != null,
+    sesion_id: c.sesionId, galpon_id: c.galpon.id, zona: c.zonaActual + 1,
+    conteo_detectado: cap.detectado, confianza_media: cap.confianza,
+    conteo_manual: cap.manual,
+    detecciones: cap.detecciones, modelo_version: cap.modelo_version || null,
+    foto_b64: cap.b64,
+  };
+  try {
+    // Se intenta siempre: el servidor sabe resolver la sesión si falta.
+    const r = await api('/capturas', body);
+    cap.subida = true;
+    if (!c.sesionId && r && r.sesion_id) c.sesionId = r.sesion_id;
+  } catch (e) {
+    // Si el servidor respondió rechazando, encolar sería mentirle al
+    // operario: la cola lo descartaría después sin que nadie se entere.
+    if (typeof e.status === 'number' && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 429) {
+      c.guardando = false; render();
+      return toast('El servidor rechazó esta zona y NO quedó guardada. Avisa al supervisor.', 6000);
+    }
+    if (!encolar('/capturas', body)) {
+      // No avanzamos: sería decirle al operario que se guardó cuando no.
+      c.guardando = false; render();
+      return toast('NO se pudo guardar esta zona. Libera espacio o conéctate antes de seguir.', 5000);
+    }
+    cap.encolada = true;
+    cap.reemplazaba = body.reemplaza_cliente_id || null;
+    toast('Sin señal: zona en cola, se subirá sola');
+  }
+  c.guardando = false;
+  // Si el operario abandonó este conteo mientras subíamos, no seguimos.
+  if (state.conteo !== c) return;
+  if (c.zonaActual + 1 < c.galpon.num_zonas) { c.zonaActual++; render(); }
+  else go('conteoResumen');
+}
+
+function viewResumen() {
+  const c = state.conteo; if (!c) return go('conteo');
+  const g = c.galpon;
+  const conConteo = c.capturas.filter(z => z && (z.manual ?? z.detectado) != null && (z.manual ?? z.detectado) > 0);
+  const suma = conConteo.reduce((a, z) => a + (z.manual ?? z.detectado), 0);
+  const estimado = conConteo.length ? Math.round(suma * g.factor_calibracion) : null;
+  const d = desv(estimado, g.inventario_teorico);
+  $('#main').innerHTML = `
+    <button class="back" onclick="state.view='conteoZona';render()">‹ Volver a zonas</button>
+    <h2 class="sec">Resumen — ${esc(g.nombre)}</h2>
+    <div class="card">
+      ${c.capturas.map((z, i) => `<div class="list-item row"><span class="sub">Zona ${i + 1} ${z?.subida ? '✓' : z ? '⏳' : ''}</span><b>${z ? fmt(z.manual ?? z.detectado ?? null) : '—'}</b></div>`).join('')}
+      <div class="list-item row"><span class="sub">Suma contada</span><b>${fmt(conConteo.length ? suma : null)}</b></div>
+      <div class="list-item row"><span class="sub">Factor de calibración</span><b>× ${g.factor_calibracion}</b></div>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="l">Inventario estimado</div><div class="v">${fmt(estimado)}</div></div>
+      <div class="tile"><div class="l">Teórico</div><div class="v">${fmt(g.inventario_teorico)}</div><div style="margin-top:4px">${statusChip(d)}</div></div>
+    </div>
+    ${!conConteo.length ? '<div class="hint">Sin conteos numéricos: las fotos quedan guardadas igual para entrenar el modelo.</div>' : ''}
+    <button class="btn" onclick="cerrarSesion()">Cerrar conteo</button>
+    <button class="btn secondary" style="margin-top:10px" onclick="go('conteo')">Salir sin cerrar</button>
+  `;
+}
+
+let cerrando = false;
+async function cerrarSesion() {
+  const c = state.conteo;
+  if (!c || cerrando) return;
+  cerrando = true;
+  // Si la sesión nunca llegó a crearse (sin señal), mandamos el galpón:
+  // el servidor cierra la sesión abierta de ese galpón.
+  const cuerpo = c.sesionId ? { sesion_id: c.sesionId } : { galpon_id: c.galpon.id };
+  try {
+    const r = await api('/sesiones/cerrar', cuerpo);
+    toast(r && r.solo_fotos ? 'Fotos guardadas (sin conteo numérico)' : 'Conteo guardado');
+  } catch (e) {
+    const irreparable = e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 429;
+    // Encolar un cierre rechazado sería peligroso: mañana cerraría el
+    // conteo equivocado del mismo galpón.
+    if (irreparable) toast('El servidor no tiene un conteo abierto que cerrar', 4500);
+    else if (encolar('/sesiones/cerrar', cuerpo)) toast('Sin señal: el cierre quedó en cola');
+    else toast('No se pudo cerrar el conteo. Reintenta con señal.', 4500);
+  } finally { cerrando = false; }
+  state.conteo = null;
+  go('galpones');
+  cargarEstado();
+}
+
+/* ---------- Video / movimientos ---------- */
+function iniciarVideo(modo) {
+  const g = state.galpones.filter(x => x.activo)[0];
+  if (!g) return toast('Agrega un galpón primero');
+  state.puerta = { modo, galponId: g.id, tipoMov: 'traslado_entrada', cantidadManual: 0,
+                   procesando: false, resultado: undefined, enviando: false, clienteId: idUnico(),
+                   cuadros: [], videoPath: null, progreso: '' };
+  go('videoSetup');
+}
+
+function viewVideoSetup() {
+  const p = state.puerta; if (!p) return go('conteo');
+  const conModelo = !!state.modeloUrl;
+  const esRecorrido = p.modo === 'recorrido';
+  $('#main').innerHTML = `
+    <button class="back" onclick="go('conteo')">‹ Volver</button>
+    <h2 class="sec">${esRecorrido ? 'Video recorriendo el galpón' : 'Movimiento en puerta'}</h2>
+    <div class="card">
+      <label style="margin-top:0">Galpón</label>
+      <select onchange="state.puerta.galponId=this.value">
+        ${state.galpones.filter(g => g.activo).map(g => `<option value="${g.id}" ${g.id === p.galponId ? 'selected' : ''}>${esc(g.nombre)}</option>`).join('')}
+      </select>
+      ${!esRecorrido ? `
+      <label>Tipo de movimiento</label>
+      <select onchange="state.puerta.tipoMov=this.value">
+        ${Object.entries(TIPOS_MOV).map(([k, v]) => `<option value="${k}" ${k === p.tipoMov ? 'selected' : ''}>${v}</option>`).join('')}
+      </select>` : ''}
+    </div>
+    ${p.procesando
+      ? `<div class="card" style="text-align:center;padding:26px"><div class="spin"></div><div class="sub" style="margin-top:10px">${esc(p.progreso || 'Procesando video…')}<br><span class="mut">no cierres la app</span></div></div>`
+      : esRecorrido
+        ? `<button class="btn" onclick="$('#vidInput').click()">🎥 Grabar / elegir video</button>
+           <div class="mut" style="margin-top:10px;padding:0 4px">Paso lento y constante, sin retroceder ni repetir pasillos. Tramos de 30–60 segundos.${conModelo ? '' : ' El video sube a tu nube y la app extrae fotos para entrenar el modelo; abajo puedes anotar tu conteo.'}</div>`
+        : conModelo
+          ? `<button class="btn" onclick="$('#vidInput').click()">🎥 Grabar / elegir video</button>
+             <div class="mut" style="margin-top:10px;padding:0 4px">Celular fijo (apoyado), el paso de las aves cruzando el centro de la imagen.</div>`
+          : `
+          <div class="card">
+            <label style="margin-top:0">Cantidad contada a mano</label>
+            <input type="number" inputmode="numeric" value="0" onchange="state.puerta.cantidadManual=Math.max(0,parseInt(this.value)||0)">
+            <button class="btn small" style="margin-top:14px" ${p.enviando ? 'disabled' : ''} onclick="guardarMovimientoManual()">${p.enviando ? 'Guardando…' : 'Registrar movimiento'}</button>
+            <div class="mut" style="margin-top:8px">Cuando el modelo esté entrenado, este conteo lo hará el video automáticamente.</div>
+          </div>`}
+  `;
+}
+
+// Extrae cuadros del video en el propio teléfono (sin servidor): son las
+// fotos que alimentan el dataset de entrenamiento.
+async function extraerCuadros(file, maximo = 8) {
+  const url = URL.createObjectURL(file);
+  try {
+    const v = document.createElement('video');
+    v.preload = 'auto'; v.muted = true; v.playsInline = true; v.src = url;
+    await new Promise((res, rej) => {
+      v.onloadedmetadata = res; v.onerror = () => rej(new Error('video ilegible'));
+      setTimeout(() => rej(new Error('video ilegible')), 15000);
+    });
+    const dur = v.duration && isFinite(v.duration) ? v.duration : 0;
+    if (!dur || !v.videoWidth) return [];
+    const cv = document.createElement('canvas');
+    const esc2 = Math.min(1, 1280 / v.videoWidth);
+    cv.width = Math.round(v.videoWidth * esc2); cv.height = Math.round(v.videoHeight * esc2);
+    const ctx = cv.getContext('2d');
+    const cuantos = Math.max(3, Math.min(maximo, Math.floor(dur / 4) || 3));
+    const cuadros = [];
+    for (let i = 0; i < cuantos; i++) {
+      try {
+        await new Promise((res, rej) => {
+          v.onseeked = res; v.onerror = () => rej(new Error('seek'));
+          v.currentTime = dur * (i + 0.5) / cuantos;
+          setTimeout(res, 4000);   // iPhone a veces no dispara el evento
+        });
+        ctx.drawImage(v, 0, 0, cv.width, cv.height);
+        cuadros.push(cv.toDataURL('image/jpeg', 0.8).split(',')[1]);
+      } catch { /* un cuadro fallido no detiene el resto */ }
+    }
+    return cuadros;
+  } catch { return []; }
+  finally { URL.revokeObjectURL(url); }
+}
+
+// Sube el video DIRECTO al almacenamiento con una URL firmada del servidor.
+async function subirVideo(file, galponId, alProgreso) {
+  const { path, token } = await api('/videos/subir-url', { galpon_id: galponId });
+  alProgreso && alProgreso('Subiendo video (' + Math.round(file.size / 1048576) + ' MB)…');
+  const r = await fetch(`${SUPA_URL}/storage/v1/object/upload/sign/avicount/${path}?token=${encodeURIComponent(token)}`,
+    { method: 'PUT', headers: { 'Content-Type': file.type || 'video/mp4' }, body: file });
+  if (!r.ok) throw new Error('No se pudo subir el video (' + r.status + ')');
+  return path;
+}
+
+$('#vidInput').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file || !state.puerta) return;
+  const p = state.puerta;
+  if (file.size > 200 * 1048576) {
+    return toast('El video pesa más de 200 MB. Graba tramos más cortos (30–60 s por pasillo).', 5000);
+  }
+  p.procesando = true; p.progreso = 'Preparando el video…'; render();
+  try {
+    // 1) Cuadros para el dataset (se extraen en el teléfono, siempre)
+    p.progreso = 'Extrayendo fotos del video…'; render();
+    p.cuadros = await extraerCuadros(file, 8);
+
+    // 2) Con modelo: el servidor de la granja cuenta el recorrido
+    if (state.modeloUrl && p.modo === 'recorrido') {
+      p.progreso = 'Contando aves (modelo)…'; render();
+      const url = state.modeloUrl.replace(/\/contar\/?$/, '') + '/contar_video?stride=2&modo=' + p.modo;
+      const fd = new FormData(); fd.append('video', file);
+      const headers = {};
+      if (state.modeloToken) headers['Authorization'] = 'Bearer ' + state.modeloToken;
+      const r = await fetch(url, { method: 'POST', body: fd, headers });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      p.resultado = await r.json();
+    } else if (state.modeloUrl && p.modo === 'puerta') {
+      p.progreso = 'Contando aves (modelo)…'; render();
+      const url = state.modeloUrl.replace(/\/contar\/?$/, '') + '/contar_video?stride=2&modo=' + p.modo;
+      const fd = new FormData(); fd.append('video', file);
+      const headers = {};
+      if (state.modeloToken) headers['Authorization'] = 'Bearer ' + state.modeloToken;
+      const r = await fetch(url, { method: 'POST', body: fd, headers });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      p.resultado = await r.json();
+    } else {
+      p.resultado = null;   // sin modelo: material + conteo manual opcional
+    }
+
+    // 3) El video sube a la nube como material de entrenamiento
+    try {
+      p.videoPath = await subirVideo(file, p.galponId, (t) => { p.progreso = t; render(); });
+    } catch (eSub) {
+      p.videoPath = null;
+      toast('El video no alcanzó a subir (se guardan igual las fotos extraídas)', 4500);
+    }
+
+    p.clienteId = idUnico();     // un id por resultado, no por toque
+    p.procesando = false;
+    go('videoResultado');
+  } catch (err) {
+    p.procesando = false; render();
+    toast('No se pudo procesar el video: ' + (err.message || 'error'), 4000);
+  }
+});
+
+function viewVideoResultado() {
+  const p = state.puerta; if (!p || (p.resultado === undefined)) return go('conteo');
+  const g = state.galpones.find(x => x.id === p.galponId);
+  const r = p.resultado;
+  const esRecorrido = p.modo === 'recorrido';
+  const conConteo = !!r;
+  const estimado = (esRecorrido && conConteo) ? Math.round(r.neto * (g.factor_video || 1)) : null;
+  const d = (esRecorrido && conConteo) ? desv(estimado, g.inventario_teorico) : null;
+  $('#main').innerHTML = `
+    <button class="back" onclick="go('conteo')">‹ Nuevo conteo</button>
+    <h2 class="sec">${esRecorrido ? 'Recorrido en video' : 'Movimiento en puerta'} — ${esc(g.nombre)}</h2>
+    ${conConteo ? `
+    <div class="tiles">
+      <div class="tile"><div class="l">Aves contadas (cruce de línea)</div><div class="v">${fmt(r.neto)}</div><div class="mut">in ${fmt(r.in_count)} · out ${fmt(r.out_count)}</div></div>
+      ${esRecorrido
+        ? `<div class="tile"><div class="l">Estimado (× ${g.factor_video || 1})</div><div class="v">${fmt(estimado)}</div><div style="margin-top:4px">${statusChip(d)}</div></div>`
+        : `<div class="tile"><div class="l">Movimiento</div><div class="v" style="font-size:18px">${TIPOS_MOV[p.tipoMov]}</div><div class="mut">Conteo exacto</div></div>`}
+    </div>` : `
+    <div class="card">
+      <div class="sub">${p.videoPath ? '✅ Video guardado en tu nube' : '⚠ El video no alcanzó a subir'} · ${(p.cuadros || []).length} foto(s) extraída(s) para el dataset de entrenamiento.</div>
+      <label>¿Contaste las aves en este recorrido? (opcional)</label>
+      <div class="stepper">
+        <button onclick="ajustarVideoManual(-10)">−</button>
+        <input type="number" inputmode="numeric" id="videoManual" value="${p.cantidadManual || 0}" onchange="state.puerta.cantidadManual=Math.max(0,parseInt(this.value)||0)">
+        <button onclick="ajustarVideoManual(10)">+</button>
+      </div>
+      <div class="mut" style="text-align:center">Deja 0 para guardar solo el material. Se aplica el factor de video (× ${g.factor_video || 1}).</div>
+    </div>`}
+    <button class="btn" ${p.enviando ? 'disabled' : ''} onclick="guardarVideo()">${p.enviando ? 'Guardando…' : 'Guardar'}</button>
+    <button class="btn secondary" style="margin-top:10px" onclick="go('conteo')">Descartar</button>
+  `;
+}
+
+function ajustarVideoManual(paso) {
+  const p = state.puerta;
+  p.cantidadManual = Math.max(0, (p.cantidadManual || 0) + paso);
+  const inp = document.getElementById('videoManual');
+  if (inp) inp.value = p.cantidadManual;
+}
+
+async function guardarVideo() {
+  const p = state.puerta;
+  if (!p || p.enviando) return;          // evita duplicar por doble toque
+  const r = p.resultado;
+  const g = state.galpones.find(x => x.id === p.galponId);
+  const esRecorrido = p.modo === 'recorrido';
+
+  let envio;
+  if (esRecorrido) {
+    // Con conteo del modelo, con conteo manual, o solo material: todo va
+    // por la misma ruta, que guarda video + cuadros para entrenar.
+    const cantidad = r ? Number(r.neto) : (p.cantidadManual > 0 ? p.cantidadManual : null);
+    if (r && !Number.isFinite(cantidad)) return toast('El video no devolvió un conteo válido', 4000);
+    envio = { ruta: '/videos/registrar', body: {
+      cliente_id: p.clienteId, galpon_id: g.id, cantidad,
+      factor: g.factor_video || 1, video_path: p.videoPath || null,
+      frames_b64: p.cuadros || [], registrado_por: state.operario,
+    } };
+  } else {
+    if (!Number.isFinite(Number(r?.neto))) return toast('El video no devolvió un conteo válido', 4000);
+    envio = { ruta: '/movimientos', body: { cliente_id: p.clienteId, galpon_id: g.id, tipo: p.tipoMov, cantidad: r.neto, origen: 'video_linea', detalles: { in_count: r.in_count, out_count: r.out_count, neto: r.neto }, registrado_por: state.operario } };
+  }
+
+  p.enviando = true; render();
+  try {
+    const resp = await api(envio.ruta, envio.body);
+    toast(esRecorrido && !envio.body.cantidad
+      ? `Material guardado: video y ${resp.cuadros_guardados ?? 0} foto(s) para entrenar`
+      : 'Guardado');
+  }
+  catch (e) {
+    if (typeof e.status === 'number' && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 429) {
+      p.enviando = false; render();
+      return toast('El servidor rechazó el dato y NO quedó guardado.', 5000);
+    }
+    // Los cuadros pesan: si no caben en la cola, se conserva el conteo.
+    if (esRecorrido) { envio.body.frames_b64 = []; }
+    if (encolar(envio.ruta, envio.body)) toast('Sin señal: quedó en cola');
+    else toast('No se pudo guardar. Reintenta con señal.', 4500);
+  }
+  state.puerta = null;
+  go('galpones'); cargarEstado();
+}
+
+async function guardarMovimientoManual() {
+  const p = state.puerta;
+  if (!p || p.enviando) return;          // evita duplicar por doble toque
+  if (!p.cantidadManual) return toast('Ingresa la cantidad');
+  const body = { cliente_id: p.clienteId, galpon_id: p.galponId, tipo: p.tipoMov, cantidad: p.cantidadManual, origen: 'manual', registrado_por: state.operario };
+  p.enviando = true; render();
+  try { await api('/movimientos', body); toast('Movimiento registrado'); }
+  catch (e) {
+    if (typeof e.status === 'number' && e.status >= 400 && e.status < 500 && e.status !== 401 && e.status !== 429) {
+      p.enviando = false; render();
+      return toast('El servidor rechazó el movimiento y NO quedó guardado.', 5000);
+    }
+    if (encolar('/movimientos', body)) toast('Sin señal: quedó en cola');
+    else toast('No se pudo guardar. Reintenta con señal.', 4500);
+  }
+  state.puerta = null;
+  go('galpones'); cargarEstado();
+}
+
+/* ---------- Historial ---------- */
+// Anular usa doble toque (nada de diálogos que bloqueen el navegador):
+// el primer toque arma el botón, el segundo dentro de 4 s confirma.
+let anularArmada = null;
+async function anularConteo(id) {
+  if (anularArmada !== id) {
+    anularArmada = id;
+    setTimeout(() => { if (anularArmada === id) { anularArmada = null; render(); } }, 4000);
+    return render();
+  }
+  anularArmada = null;
+  try {
+    await api('/sesiones/anular', { sesion_id: id });
+    toast('Conteo anulado: ya no cuenta para el inventario');
+  } catch (e) {
+    toast('No se pudo anular: ' + (e.message || 'sin señal'), 4000);
+  }
+  cargarEstado();
+}
+
+function viewHistorial() {
+  $('#main').innerHTML = `
+    <h2 class="sec">Estimaciones de inventario</h2>
+    <div class="card">
+      ${state.sesiones.length ? state.sesiones.map(s => {
+        const g = state.galpones.find(x => x.id === s.galpon_id);
+        const d = desv(s.inventario_estimado, s.inventario_teorico_snapshot);
+        const chip = s.estado === 'cerrada' ? statusChip(d)
+          : s.estado === 'anulada' ? '<span class="status pending">Anulada</span>'
+          : s.estado === 'abandonada' ? '<span class="status pending">Abandonada</span>'
+          : '<span class="status pending">Abierta</span>';
+        const anulable = s.estado === 'cerrada' || s.estado === 'abierta';
+        return `<div class="list-item">
+          <div class="row">
+            <div><b style="font-size:14px">${esc(g?.nombre ?? '?')} ${s.metodo === 'video_recorrido' ? '🎥' : '📷'}</b>
+            <div class="mut">${fecha(s.cerrada_at || s.iniciada_at)} · est. ${fmt(s.inventario_estimado)} / teo. ${fmt(s.inventario_teorico_snapshot)} · ${esc(s.operario || '')}</div></div>
+            ${chip}
+          </div>
+          ${anulable ? `<button class="btn secondary small" style="width:auto;padding:6px 12px;margin-top:8px;${anularArmada === s.id ? 'color:var(--critical);border-color:var(--critical);' : 'color:var(--muted);'}"
+            onclick="anularConteo('${s.id}')">${anularArmada === s.id ? '¿Seguro? Toca de nuevo para anular' : 'Anular'}</button>` : ''}
+        </div>`;
+      }).join('') : '<div class="mut">Aún no hay conteos.</div>'}
+      ${state.sesiones.length ? '<div class="mut" style="margin-top:8px">Anular saca un conteo equivocado del inventario y del reporte hacia el ERP. Las fotos quedan guardadas igual.</div>' : ''}
+    </div>
+    <h2 class="sec">Movimientos</h2>
+    <div class="card">
+      ${state.movimientos.length ? state.movimientos.map(m => {
+        const g = state.galpones.find(x => x.id === m.galpon_id);
+        return `<div class="list-item row">
+          <div><b style="font-size:14px">${esc(g?.nombre ?? '?')} 🚪</b>
+          <div class="mut">${fecha(m.registrado_at)} · ${esc(TIPOS_MOV[m.tipo] ?? m.tipo)} · ${m.origen === 'video_linea' ? 'video (exacto)' : 'manual'}</div></div>
+          <b>${fmt(m.cantidad)}</b>
+        </div>`;
+      }).join('') : '<div class="mut">Sin movimientos registrados.</div>'}
+    </div>
+    <button class="btn secondary small" onclick="cargarEstado()">Actualizar</button>
+  `;
+}
+
+/* ---------- Ajustes ---------- */
+function viewAjustes() {
+  const cola = LS.get('cola', []);
+  const descartados = LS.get('descartados', []);
+  $('#main').innerHTML = `
+    <h2 class="sec">Galpones</h2>
+    <div class="card">
+      ${state.galpones.map(g => `<div class="list-item row">
+        <div><b style="font-size:14px">${esc(g.nombre)}${g.activo ? '' : ' (inactivo)'}</b>
+        <div class="mut">${g.num_zonas} zonas · teórico ${fmt(g.inventario_teorico)} · factor ${g.factor_calibracion}</div></div>
+        <button class="btn secondary small" style="width:auto;padding:8px 14px" onclick="editarGalpon('${g.id}')">Editar</button>
+      </div>`).join('') || '<div class="mut">Sin galpones.</div>'}
+      <button class="btn small" style="margin-top:12px" onclick="editarGalpon(null)">+ Agregar galpón</button>
+    </div>
+
+    <h2 class="sec">Servidor del modelo (cuando esté entrenado)</h2>
+    <div class="card">
+      <div class="sub">Sin esto, la app funciona en modo manual y va juntando fotos para entrenar. Cuando el modelo exista, ingresa aquí su URL y los conteos serán automáticos.</div>
+      <label>URL del servidor de inferencia</label>
+      <input type="text" id="cfgModeloUrl" value="${esc(state.modeloUrl)}" placeholder="http://192.168.1.50:8000/contar">
+      <label>Token (opcional)</label>
+      <input type="password" id="cfgModeloToken" value="${esc(state.modeloToken)}">
+      <button class="btn small" style="margin-top:14px" onclick="guardarModelo()">Guardar</button>
+    </div>
+
+    <h2 class="sec">Pendientes sin subir</h2>
+    <div class="card">
+      <div class="sub">${cola.length ? cola.length + ' registro(s) esperando señal.' : 'Nada pendiente: todo sincronizado.'}</div>
+      ${cola.length ? '<button class="btn small" style="margin-top:10px" onclick="drenarCola()">Reintentar ahora</button>' : ''}
+      ${descartados.length ? `<div class="sub" style="margin-top:12px;color:var(--critical)">
+        <b>${descartados.length} registro(s) que el servidor rechazó</b> y no se pudieron guardar:
+        ${descartados.slice(0, 5).map(x => `zona ${x.zona ?? '—'} (${x.conteo ?? '—'})`).join(', ')}.
+        Avisa al supervisor.</div>
+        <button class="btn secondary small" style="margin-top:10px" onclick="LS.set('descartados',[]);render()">Entendido, borrar aviso</button>` : ''}
+    </div>
+
+    <h2 class="sec">Instalar como app</h2>
+    <div class="card">
+      <div class="sub"><b>Android (Chrome):</b> menú ⋮ → "Agregar a pantalla de inicio".</div>
+      <div class="sub" style="margin-top:6px"><b>iPhone (Safari):</b> Compartir → "Agregar a pantalla de inicio".</div>
+    </div>
+
+    <div class="card row">
+      <div class="sub">Sesión: <b>${esc(state.operario)}</b><div class="mut">AviCount ${APP_VERSION}${state.modeloVersion ? ' · modelo ' + esc(state.modeloVersion) : ' · sin modelo'}</div></div>
+      <button class="btn secondary small" style="width:auto;padding:8px 14px" onclick="salir()">Salir</button>
+    </div>
+  `;
+}
+
+function guardarModelo() {
+  const u = $('#cfgModeloUrl').value.trim();
+  state.modeloToken = $('#cfgModeloToken').value.trim();
+  LS.set('modeloToken', state.modeloToken);
+  // Solo se considera "manual" si el operario escribió algo distinto de lo
+  // publicado por el servidor. Si no, este teléfono quedaría clavado en una
+  // dirección vieja y no recibiría nunca la del próximo modelo.
+  LS.set('modeloUrlManual', (u && u !== LS.get('modeloUrlServidor', '')) ? u : '');
+  state.modeloUrl = u;
+  LS.set('modeloUrl', u);
+  toast('Guardado'); render();
+}
+
+function salir() {
+  state.codigo = ''; LS.set('codigo', '');
+  state.googleListo = false; LS.set('googleListo', false);
+  state.googleEmail = ''; LS.set('googleEmail', '');
+  if (sb) { try { sb.auth.signOut(); } catch {} }
+  state.view = 'galpones';
+  render();
+}
+
+function editarGalpon(id) {
+  state.editGalpon = id ? { ...state.galpones.find(g => g.id === id) } : { nombre: '', num_zonas: 6, factor_calibracion: 1.0, factor_video: 1.0, inventario_teorico: null, activo: true };
+  go('galponForm');
+}
+
+function viewGalponForm() {
+  const g = state.editGalpon; if (!g) return go('ajustes');
+  $('#main').innerHTML = `
+    <button class="back" onclick="go('ajustes')">‹ Ajustes</button>
+    <h2 class="sec">${g.id ? 'Editar' : 'Nuevo'} galpón</h2>
+    <div class="card">
+      <label style="margin-top:0">Nombre</label>
+      <input type="text" id="gNombre" value="${esc(g.nombre || '')}" placeholder="Galpón 4">
+      <label>Número de zonas (fotos por recorrido)</label>
+      <input type="number" inputmode="numeric" id="gZonas" value="${g.num_zonas}">
+      <label>Inventario teórico (dato del ERP)</label>
+      <input type="number" inputmode="numeric" id="gTeorico" value="${g.inventario_teorico ?? ''}" placeholder="ej: 4850">
+      <label>Factor calibración fotos</label>
+      <input type="number" step="0.01" id="gFactor" value="${g.factor_calibracion}">
+      <label>Factor calibración video recorrido</label>
+      <input type="number" step="0.01" id="gFactorV" value="${g.factor_video ?? 1.0}">
+      <label>Activo</label>
+      <select id="gActivo"><option value="true" ${g.activo ? 'selected' : ''}>Sí</option><option value="false" ${!g.activo ? 'selected' : ''}>No</option></select>
+      <button class="btn" style="margin-top:16px" onclick="guardarGalpon()">Guardar</button>
+    </div>
+  `;
+}
+
+async function guardarGalpon() {
+  const g = state.editGalpon;
+  const body = {
+    id: g.id || null,
+    // Se reenvía el enlace con Codi para que editar no lo borre.
+    codi_galpon_id: g.codi_galpon_id ?? null,
+    nombre: $('#gNombre').value.trim(),
+    num_zonas: Math.max(1, parseInt($('#gZonas').value) || 6),
+    inventario_teorico: $('#gTeorico').value === '' ? null : Math.max(0, parseInt($('#gTeorico').value) || 0),
+    factor_calibracion: Math.max(1, parseFloat($('#gFactor').value) || 1),
+    factor_video: Math.max(0.5, parseFloat($('#gFactorV').value) || 1),
+    activo: $('#gActivo').value === 'true',
+  };
+  if (!body.nombre) return toast('Ponle nombre al galpón');
+  try {
+    await api('/galpones', body);
+    toast('Galpón guardado');
+    await cargarEstado();
+    go('ajustes');
+  } catch (e) { toast('No se pudo guardar: ' + e.message); }
+}
+
+/* ---------- Inicio ---------- */
+// Teléfonos que ya tenían una URL puesta a mano antes de este cambio:
+// se respeta su elección en vez de pisarla con la del servidor.
+if (LS.get('modeloUrl', '') && LS.get('modeloUrlManual', null) === null) {
+  LS.set('modeloUrlManual', LS.get('modeloUrl', ''));
+}
+render();
+if (tieneCredencial()) { cargarEstado(); drenarCola(true); }
+revisarSesionGoogle();
+if (sb) sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN') revisarSesionGoogle(); });
+</script>
+</body>
+</html>
