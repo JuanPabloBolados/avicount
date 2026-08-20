@@ -129,10 +129,11 @@
 
 <input type="file" accept="image/*" capture="environment" id="camInput" hidden>
 <input type="file" accept="video/*" capture="environment" id="vidInput" hidden>
+<input type="file" accept="video/*" id="vidInputArchivo" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION = 'v1.4 · 16-ago-2026';
+const APP_VERSION = 'v1.4.1 · 16-ago-2026';
 
 // Proyecto propio (la clave publishable es pública por diseño; los datos
 // están protegidos por RLS y solo se accede vía la API con credenciales).
@@ -832,10 +833,12 @@ function viewVideoSetup() {
     ${p.procesando
       ? `<div class="card" style="text-align:center;padding:26px"><div class="spin"></div><div class="sub" style="margin-top:10px">${esc(p.progreso || 'Procesando video…')}<br><span class="mut">no cierres la app</span></div></div>`
       : esRecorrido
-        ? `<button class="btn" onclick="$('#vidInput').click()">🎥 Grabar / elegir video</button>
-           <div class="mut" style="margin-top:10px;padding:0 4px">Paso lento y constante, sin retroceder ni repetir pasillos. Tramos de 30–60 segundos.${conModelo ? '' : ' El video sube a tu nube y la app extrae fotos para entrenar el modelo; abajo puedes anotar tu conteo.'}</div>`
+        ? `<button class="btn" onclick="$('#vidInput').click()">🎥 Grabar ahora</button>
+           <button class="btn secondary" style="margin-top:10px" onclick="$('#vidInputArchivo').click()">📁 Elegir un video guardado</button>
+           <div class="mut" style="margin-top:10px;padding:0 4px">Paso lento y constante, sin retroceder ni repetir pasillos. Tramos de 30–60 segundos.${conModelo ? '' : ' El video sube a tu nube y la app extrae fotos para entrenar el modelo; abajo puedes anotar tu conteo.'} Sirve también un video que te enviaron: "Elegir un video guardado".</div>`
         : conModelo
-          ? `<button class="btn" onclick="$('#vidInput').click()">🎥 Grabar / elegir video</button>
+          ? `<button class="btn" onclick="$('#vidInput').click()">🎥 Grabar ahora</button>
+             <button class="btn secondary" style="margin-top:10px" onclick="$('#vidInputArchivo').click()">📁 Elegir un video guardado</button>
              <div class="mut" style="margin-top:10px;padding:0 4px">Celular fijo (apoyado), el paso de las aves cruzando el centro de la imagen.</div>`
           : `
           <div class="card">
@@ -892,7 +895,7 @@ async function subirVideo(file, galponId, alProgreso) {
   return path;
 }
 
-$('#vidInput').addEventListener('change', async e => {
+const manejarVideo = async e => {
   const file = e.target.files[0]; e.target.value = '';
   if (!file || !state.puerta) return;
   const p = state.puerta;
@@ -943,7 +946,9 @@ $('#vidInput').addEventListener('change', async e => {
     p.procesando = false; render();
     toast('No se pudo procesar el video: ' + (err.message || 'error'), 4000);
   }
-});
+};
+$('#vidInput').addEventListener('change', manejarVideo);
+$('#vidInputArchivo').addEventListener('change', manejarVideo);
 
 function viewVideoResultado() {
   const p = state.puerta; if (!p || (p.resultado === undefined)) return go('conteo');
