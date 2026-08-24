@@ -1,0 +1,13 @@
+{
+  "run_id": 32693975608,
+  "run_attempt": 1,
+  "source_sha": "1aff271532b4ce7fab1ddec28d67e01b39c0bb5c",
+  "install": "success",
+  "download": "success",
+  "prepare": "failure",
+  "train": "failure",
+  "checkpoint_created": false,
+  "checkpoint_bytes": 0,
+  "production_ready": false,
+  "note": "CPU bootstrap only; promotion requires held-out AviCount benchmark."
+}
