@@ -11,7 +11,7 @@ import numpy as np
 import supervision as sv
 from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
-from trackers import ByteTrackTracker
+from trackers import BoTSORTTracker, ByteTrackTracker
 from ultralytics import YOLO
 
 APP_VERSION = "1.5.0-dev"
@@ -201,7 +201,7 @@ def _count_door(video_path: str, stride: int) -> dict[str, Any]:
                 )
 
             detections = _video_detections(frame)
-            tracked = tracker.update(detections, frame=frame)
+            tracked = tracker.update(detections)
             line_zone.trigger(tracked)
             frames_processed += 1
     finally:
@@ -230,15 +230,15 @@ def _count_door(video_path: str, stride: int) -> dict[str, Any]:
 def _track_walkthrough(video_path: str, stride: int) -> dict[str, Any]:
     """Métrica experimental para recorrido con cámara móvil.
 
-    Cuenta tracklets únicos observados, pero NO los declara inventario. La cámara
-    se mueve y un mismo animal puede perder/recrear identidad; por eso el valor
-    sirve para medir y calibrar, no para cerrar población automáticamente.
+    Usa BoT-SORT con compensación de movimiento de cámara para reducir cambios
+    artificiales de ID. Aun así, NO declara el resultado como inventario hasta
+    que se valide contra conteos humanos reales en galpones.
     """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise HTTPException(status_code=400, detail="video ilegible")
 
-    tracker = ByteTrackTracker()
+    tracker = BoTSORTTracker(enable_cmc=True, cmc_method="sparseOptFlow")
     seen_ids: set[int] = set()
     frame_counts: list[int] = []
     frames_read = 0
@@ -255,7 +255,7 @@ def _track_walkthrough(video_path: str, stride: int) -> dict[str, Any]:
             detections = _video_detections(frame)
             tracked = tracker.update(detections, frame=frame)
             if tracked.tracker_id is not None:
-                seen_ids.update(int(v) for v in tracked.tracker_id.tolist())
+                seen_ids.update(int(v) for v in tracked.tracker_id.tolist() if int(v) >= 0)
             frame_counts.append(len(tracked))
             frames_processed += 1
     finally:
@@ -278,6 +278,7 @@ def _track_walkthrough(video_path: str, stride: int) -> dict[str, Any]:
         "frames_leidos": frames_read,
         "frames_procesados": frames_processed,
         "modelo_version": MODEL_VERSION,
+        "tracker": "BoT-SORT+CMC",
         "experimental": True,
         "valido_inventario": False,
         "advertencia": "recorrido con cámara móvil requiere validación antes de usar como inventario",
