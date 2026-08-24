@@ -6,4 +6,4 @@ opencv-python-headless>=4.10,<5
 Pillow>=11,<12
 supervision==0.30.0
 trackers==2.6.0
-ultralytics>=8.3,<9
+rfdetr==1.9.2
