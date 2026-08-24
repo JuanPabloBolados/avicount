@@ -1,0 +1,92 @@
+name: Train aves-v1 bootstrap
+
+on:
+  push:
+    branches:
+      - feature/vision-supervision-v1.5
+    paths:
+      - '.github/workflows/train-aves-bootstrap.yml'
+      - 'vision/training/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: vision/training/requirements.txt
+
+      - name: Install training dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r vision/training/requirements.txt
+
+      - name: Download and verify PIO
+        run: |
+          python vision/training/download_pio.py --out data/pio
+
+      - name: Build small reproducible RF-DETR bootstrap set
+        run: |
+          python vision/training/prepare_pio_rfdetr.py data/pio/extracted \
+            --out data/pio-bootstrap \
+            --train-limit 64 \
+            --valid-limit 16 \
+            --seed 24082026
+          find data/pio-bootstrap -maxdepth 3 -type f | head -40
+
+      - name: Train RF-DETR Nano CPU bootstrap
+        run: |
+          python vision/training/train_aves_v1.py data/pio-bootstrap \
+            --model nano \
+            --out runs/aves-v1-bootstrap \
+            --epochs 1 \
+            --batch-size 1 \
+            --grad-accum 4 \
+            --resolution 384 \
+            --device cpu \
+            --workers 2 \
+            --eval-interval 1
+
+      - name: Record provenance
+        if: always()
+        run: |
+          mkdir -p runs/aves-v1-bootstrap
+          python - <<'PY'
+          import json, platform, subprocess, sys
+          from pathlib import Path
+          p = Path('runs/aves-v1-bootstrap/provenance.json')
+          p.write_text(json.dumps({
+              'kind': 'bootstrap-cpu',
+              'production_ready': False,
+              'model': 'RF-DETR Nano',
+              'dataset': 'PIO subset: 64 train / 16 valid',
+              'seed': 24082026,
+              'epochs': 1,
+              'python': sys.version,
+              'platform': platform.platform(),
+              'commit': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
+          }, indent=2), encoding='utf-8')
+          PY
+
+      - name: Upload checkpoint and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aves-v1-bootstrap-${{ github.sha }}
+          path: |
+            runs/aves-v1-bootstrap/**
+            data/pio/zenodo_manifest.json
+            data/pio-bootstrap/data.yaml
+          if-no-files-found: warn
+          retention-days: 7
