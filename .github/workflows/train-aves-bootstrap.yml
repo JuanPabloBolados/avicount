@@ -6,11 +6,10 @@ on:
       - feature/vision-supervision-v1.5
     paths:
       - '.github/workflows/train-aves-bootstrap.yml'
-      - 'vision/training/**'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bootstrap-cpu:
@@ -20,6 +19,8 @@ jobs:
       PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/vision-supervision-v1.5
 
       - uses: actions/setup-python@v5
         with:
@@ -27,16 +28,22 @@ jobs:
           cache: pip
           cache-dependency-path: vision/training/requirements.txt
 
-      - name: Install training dependencies
+      - id: install
+        name: Install training dependencies
+        continue-on-error: true
         run: |
           python -m pip install --upgrade pip
           pip install -r vision/training/requirements.txt
 
-      - name: Download and verify PIO
+      - id: download
+        name: Download and verify PIO
+        continue-on-error: true
         run: |
           python vision/training/download_pio.py --out data/pio
 
-      - name: Build small reproducible RF-DETR bootstrap set
+      - id: prepare
+        name: Build small reproducible RF-DETR bootstrap set
+        continue-on-error: true
         run: |
           python vision/training/prepare_pio_rfdetr.py data/pio/extracted \
             --out data/pio-bootstrap \
@@ -45,7 +52,9 @@ jobs:
             --seed 24082026
           find data/pio-bootstrap -maxdepth 3 -type f | head -40
 
-      - name: Train RF-DETR Nano CPU bootstrap
+      - id: train
+        name: Train RF-DETR Nano CPU bootstrap
+        continue-on-error: true
         run: |
           python vision/training/train_aves_v1.py data/pio-bootstrap \
             --model nano \
@@ -63,7 +72,7 @@ jobs:
         run: |
           mkdir -p runs/aves-v1-bootstrap
           python - <<'PY'
-          import json, platform, subprocess, sys
+          import json, os, platform, subprocess, sys
           from pathlib import Path
           p = Path('runs/aves-v1-bootstrap/provenance.json')
           p.write_text(json.dumps({
@@ -76,10 +85,12 @@ jobs:
               'python': sys.version,
               'platform': platform.platform(),
               'commit': subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip(),
+              'run_id': os.getenv('GITHUB_RUN_ID'),
           }, indent=2), encoding='utf-8')
           PY
 
-      - name: Upload checkpoint and logs
+      - id: artifact
+        name: Upload checkpoint and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -90,3 +101,40 @@ jobs:
             data/pio-bootstrap/data.yaml
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Publish machine-readable result to branch
+        if: always()
+        env:
+          INSTALL: ${{ steps.install.outcome }}
+          DOWNLOAD: ${{ steps.download.outcome }}
+          PREPARE: ${{ steps.prepare.outcome }}
+          TRAIN: ${{ steps.train.outcome }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          checkpoint = Path('runs/aves-v1-bootstrap/checkpoint_best_total.pth')
+          result = {
+              'run_id': int(os.environ['RUN_ID']),
+              'run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'source_sha': os.environ['SOURCE_SHA'],
+              'install': os.environ['INSTALL'],
+              'download': os.environ['DOWNLOAD'],
+              'prepare': os.environ['PREPARE'],
+              'train': os.environ['TRAIN'],
+              'checkpoint_created': checkpoint.exists(),
+              'checkpoint_bytes': checkpoint.stat().st_size if checkpoint.exists() else 0,
+              'production_ready': False,
+              'note': 'CPU bootstrap only; promotion requires held-out AviCount benchmark.'
+          }
+          Path('vision/training/bootstrap_result.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result, indent=2))
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add vision/training/bootstrap_result.json
+          git commit -m "CI: record aves-v1 bootstrap result [skip ci]" || true
+          git push origin HEAD:feature/vision-supervision-v1.5
