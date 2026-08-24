@@ -11,26 +11,22 @@ import numpy as np
 import supervision as sv
 from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
 from pydantic import BaseModel
+from rfdetr import RFDETRBase
 from trackers import BoTSORTTracker, ByteTrackTracker
-from ultralytics import YOLO
 
 APP_VERSION = "1.5.0-dev"
-MODEL_VERSION = os.getenv("AVICOUNT_MODEL_VERSION", "sin-version")
-MODEL_PATH = os.getenv("AVICOUNT_MODEL_PATH", "models/best.pt")
+MODEL_VERSION = os.getenv("AVICOUNT_MODEL_VERSION", "aves-v1-dev")
+MODEL_PATH = os.getenv("AVICOUNT_MODEL_PATH", "models/aves-v1.pth")
+MODEL_CLASS = os.getenv("AVICOUNT_MODEL_CLASS", "ave")
 API_TOKEN = os.getenv("AVICOUNT_API_TOKEN", "").strip()
 CONFIDENCE = float(os.getenv("AVICOUNT_CONFIDENCE", "0.25"))
 IOU = float(os.getenv("AVICOUNT_IOU", "0.50"))
-SLICE_SIZE = int(os.getenv("AVICOUNT_SLICE_SIZE", "640"))
-SLICE_OVERLAP = int(os.getenv("AVICOUNT_SLICE_OVERLAP", "128"))
+SLICE_SIZE = int(os.getenv("AVICOUNT_SLICE_SIZE", "672"))
+SLICE_OVERLAP = int(os.getenv("AVICOUNT_SLICE_OVERLAP", "168"))
 USE_SLICER = os.getenv("AVICOUNT_USE_SLICER", "1") not in {"0", "false", "False"}
-CLASS_IDS = {
-    int(v.strip())
-    for v in os.getenv("AVICOUNT_CLASS_IDS", "").split(",")
-    if v.strip()
-}
 
 app = FastAPI(title="AviCount Vision", version=APP_VERSION)
-_model: YOLO | None = None
+_model: RFDETRBase | None = None
 
 
 class CountRequest(BaseModel):
@@ -45,34 +41,29 @@ def _authorize(authorization: str | None) -> None:
         raise HTTPException(status_code=401, detail="token inválido")
 
 
-def _get_model() -> YOLO:
+def _get_model() -> RFDETRBase:
     global _model
     if _model is None:
         path = Path(MODEL_PATH)
         if not path.exists():
-            raise HTTPException(
-                status_code=503,
-                detail=f"modelo no disponible: {path}",
-            )
-        _model = YOLO(str(path))
+            raise HTTPException(status_code=503, detail=f"modelo no disponible: {path}")
+        _model = RFDETRBase(pretrain_weights=str(path))
     return _model
 
 
 def _filter_detections(detections: sv.Detections) -> sv.Detections:
     if len(detections) == 0:
         return detections
-    mask = np.ones(len(detections), dtype=bool)
-    if detections.confidence is not None:
-        mask &= detections.confidence >= CONFIDENCE
-    if CLASS_IDS and detections.class_id is not None:
-        mask &= np.isin(detections.class_id, list(CLASS_IDS))
-    return detections[mask]
+    if detections.confidence is None:
+        return detections
+    return detections[detections.confidence >= CONFIDENCE]
 
 
-def _detect_tile(image: np.ndarray) -> sv.Detections:
-    model = _get_model()
-    result = model(image, conf=CONFIDENCE, iou=IOU, verbose=False)[0]
-    return _filter_detections(sv.Detections.from_ultralytics(result))
+def _detect_tile(image_bgr: np.ndarray) -> sv.Detections:
+    # RF-DETR recibe RGB. El checkpoint aves-v1 es de una sola clase: ave.
+    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    detections = _get_model().predict(image_rgb, threshold=CONFIDENCE)
+    return _filter_detections(detections)
 
 
 def detect_image(image: np.ndarray) -> sv.Detections:
@@ -80,8 +71,6 @@ def detect_image(image: np.ndarray) -> sv.Detections:
         return _detect_tile(image)
 
     h, w = image.shape[:2]
-    # Para imágenes pequeñas no aporta valor partirlas; para galpones grandes,
-    # el slicing conserva aves que serían muy pequeñas en la imagen completa.
     if max(h, w) <= SLICE_SIZE:
         return _detect_tile(image)
 
@@ -110,18 +99,16 @@ def _decode_image(value: str) -> np.ndarray:
     return image
 
 
-def _prediction_payload(detections: sv.Detections, image: np.ndarray) -> list[dict[str, Any]]:
-    model = _get_model()
-    names = getattr(model, "names", {}) or {}
+def _prediction_payload(detections: sv.Detections) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for i, xyxy in enumerate(detections.xyxy):
         x1, y1, x2, y2 = [float(v) for v in xyxy]
-        class_id = int(detections.class_id[i]) if detections.class_id is not None else 0
         confidence = (
             float(detections.confidence[i])
             if detections.confidence is not None
             else 1.0
         )
+        class_id = int(detections.class_id[i]) if detections.class_id is not None else 0
         out.append(
             {
                 "x": (x1 + x2) / 2,
@@ -130,7 +117,7 @@ def _prediction_payload(detections: sv.Detections, image: np.ndarray) -> list[di
                 "height": y2 - y1,
                 "confidence": confidence,
                 "class_id": class_id,
-                "class": str(names.get(class_id, "ave")),
+                "class": MODEL_CLASS,
             }
         )
     return out
@@ -145,6 +132,7 @@ def salud() -> dict[str, Any]:
         "modelo_version": MODEL_VERSION,
         "modelo_path": MODEL_PATH,
         "modelo_disponible": Path(MODEL_PATH).exists(),
+        "detector": "RF-DETR Base",
         "supervision": sv.__version__,
         "slicing": USE_SLICER,
     }
@@ -160,16 +148,16 @@ def contar(
     detections = detect_image(image)
     h, w = image.shape[:2]
     return {
-        "predictions": _prediction_payload(detections, image),
+        "predictions": _prediction_payload(detections),
         "image": {"width": w, "height": h},
         "count": len(detections),
         "model_version": MODEL_VERSION,
-        "pipeline": "supervision-inference-slicer" if USE_SLICER else "direct",
+        "pipeline": "rfdetr+supervision-slicer" if USE_SLICER else "rfdetr-direct",
     }
 
 
 def _video_detections(frame: np.ndarray) -> sv.Detections:
-    # En video se evita slicing por frame: el tracker necesita latencia estable.
+    # En video evitamos slicing por frame: el tracker requiere latencia estable.
     return _detect_tile(frame)
 
 
@@ -212,9 +200,6 @@ def _count_door(video_path: str, stride: int) -> dict[str, Any]:
 
     in_count = int(line_zone.in_count)
     out_count = int(line_zone.out_count)
-    # En una puerta importa cuántas aves cruzaron. Se entregan ambos sentidos
-    # por separado para auditoría y el total de cruces como `neto`, contrato
-    # que AviCount ya consume para registrar el movimiento.
     return {
         "modo": "puerta",
         "in_count": in_count,
@@ -230,9 +215,9 @@ def _count_door(video_path: str, stride: int) -> dict[str, Any]:
 def _track_walkthrough(video_path: str, stride: int) -> dict[str, Any]:
     """Métrica experimental para recorrido con cámara móvil.
 
-    Usa BoT-SORT con compensación de movimiento de cámara para reducir cambios
-    artificiales de ID. Aun así, NO declara el resultado como inventario hasta
-    que se valide contra conteos humanos reales en galpones.
+    BoT-SORT + CMC reduce cambios artificiales de identidad causados por el
+    movimiento de cámara. Aun así el resultado NO se declara inventario hasta
+    validarlo contra ground truth humano en galpones reales.
     """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -264,8 +249,6 @@ def _track_walkthrough(video_path: str, stride: int) -> dict[str, Any]:
     if frames_processed == 0:
         raise HTTPException(status_code=400, detail="video sin cuadros procesables")
 
-    # Compatibilidad con el contrato de la PWA. `neto` es una medición
-    # experimental; el frontend v1.5 deberá respetar valido_inventario=false.
     tracklets = len(seen_ids)
     return {
         "modo": "recorrido",
