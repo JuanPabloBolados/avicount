@@ -1,0 +1,6 @@
+rfdetr[train,metrics,loggers]==1.9.2
+supervision==0.30.0
+requests>=2.32,<3
+opencv-python>=4.10,<5
+Pillow>=11,<12
+PyYAML>=6,<7
