@@ -133,7 +133,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION = 'v1.4.1 · 16-ago-2026';
+const APP_VERSION = 'v1.5.1 · 30-ago-2026';
 
 // Proyecto propio (la clave publishable es pública por diseño; los datos
 // están protegidos por RLS y solo se accede vía la API con credenciales).
@@ -187,6 +187,7 @@ const state = {
   galpones: [],
   sesiones: [],
   movimientos: [],
+  mortalidad14: [],
   cargando: false,
   conteo: null,
   puerta: null,
@@ -329,6 +330,7 @@ async function cargarEstado() {
     state.galpones = d.galpones || [];
     state.sesiones = d.sesiones || [];
     state.movimientos = d.movimientos || [];
+    state.mortalidad14 = d.mortalidad_14d || [];
     // El modelo se publica una vez en el servidor y llega a toda la flota.
     // Se guarda para que siga disponible aunque la app arranque sin señal.
     if (d.modelo) LS.set('modeloUrlServidor', d.modelo.url || '');
@@ -375,6 +377,7 @@ function render() {
   if (v === 'historial') return viewHistorial();
   if (v === 'ajustes') return viewAjustes();
   if (v === 'galponForm') return viewGalponForm();
+  if (v === 'guia') return viewGuia();
 }
 
 /* ---------- Login ---------- */
@@ -490,6 +493,62 @@ async function login() {
 /* ---------- Dashboard ---------- */
 function ultimaSesion(gid) { return state.sesiones.find(s => s.galpon_id === gid && s.estado === 'cerrada'); }
 
+/* ---------- Salud del galpón ("de un vistazo") ----------
+   Reglas simples y explicables, con los datos que ya registramos:
+   · Conteo: desviación del último conteo cerrado (±2% ✓ · ±5% ⚠ · más ✕).
+   · Mortalidad: esta semana vs. la anterior, y % sobre el teórico.
+     Umbral por defecto: >1% semanal o el doble de la semana anterior
+     (con mínimo de aves para no alarmar por 2 ó 3). Ajustable a criterio.
+   · Frecuencia: el protocolo es contar cada semana; >7 días ⚠, >14 ✕. */
+function saludGalpon(g) {
+  const ahora = Date.now();
+  const s = ultimaSesion(g.id);
+  const d = s ? desv(s.inventario_estimado, s.inventario_teorico_snapshot ?? g.inventario_teorico) : null;
+
+  let mort7 = 0, mortPrev = 0;
+  for (const m of (state.mortalidad14 || [])) {
+    if (m.galpon_id !== g.id) continue;
+    const dias = (ahora - new Date(m.registrado_at).getTime()) / 86400000;
+    if (dias < 0) continue;
+    if (dias <= 7) mort7 += m.cantidad || 0;
+    else if (dias <= 14) mortPrev += m.cantidad || 0;
+  }
+  const pctMort = g.inventario_teorico ? mort7 / g.inventario_teorico * 100 : null;
+
+  const problemas = [];   // [nivel, texto] — nivel 2 = crítico, 1 = revisar
+  if (d != null && Math.abs(d) > 2) {
+    problemas.push([Math.abs(d) > 5 ? 2 : 1, `Conteo ${d > 0 ? '+' : ''}${d.toFixed(1)}% vs teórico`]);
+  }
+  if ((pctMort != null && pctMort > 1 && mort7 >= 10) || (mort7 >= 10 && mort7 >= 2 * Math.max(mortPrev, 1))) {
+    problemas.push([2, `Mortalidad alta: ${fmt(mort7)} en 7 días${pctMort != null ? ` (${pctMort.toFixed(2)}%)` : ''} vs ${fmt(mortPrev)} la semana anterior`]);
+  } else if (mort7 >= 5 && mort7 > mortPrev) {
+    problemas.push([1, `Mortalidad subió: ${fmt(mort7)} esta semana vs ${fmt(mortPrev)} la anterior`]);
+  }
+  let diasSin = null;
+  if (s && s.cerrada_at) {
+    diasSin = Math.floor((ahora - new Date(s.cerrada_at).getTime()) / 86400000);
+    if (diasSin > 7) problemas.push([diasSin > 14 ? 2 : 1, `${diasSin} días sin conteo (protocolo: semanal)`]);
+  }
+
+  let nivel, razon = null;
+  if (!s && !mort7 && !mortPrev) {
+    nivel = 'pendiente';
+  } else {
+    if (!s) problemas.push([1, 'Sin conteos aún']);
+    problemas.sort((a, b) => b[0] - a[0]);
+    nivel = problemas.length ? (problemas[0][0] === 2 ? 'crit' : 'warn') : 'ok';
+    razon = problemas.length ? problemas[0][1] : null;
+  }
+  return { nivel, razon, mort7, mortPrev, pctMort, diasSin, d, s };
+}
+
+function chipSalud(nivel) {
+  if (nivel === 'ok') return '<span class="status ok">✓ Sano</span>';
+  if (nivel === 'warn') return '<span class="status warn">⚠ Revisar</span>';
+  if (nivel === 'crit') return '<span class="status crit">✕ Atención</span>';
+  return '<span class="status pending">Sin datos</span>';
+}
+
 function viewGalpones() {
   if (state.cargando && !state.galpones.length) {
     $('#main').innerHTML = `<div class="card" style="text-align:center;padding:30px"><div class="spin"></div><div class="mut" style="margin-top:10px">Cargando…</div></div>`;
@@ -498,11 +557,18 @@ function viewGalpones() {
   const activos = state.galpones.filter(g => g.activo);
   const totalTeo = activos.reduce((a, g) => a + (g.inventario_teorico || 0), 0);
   const totalEst = activos.reduce((a, g) => a + (ultimaSesion(g.id)?.inventario_estimado ?? 0), 0);
+  const saluds = Object.fromEntries(activos.map(g => [g.id, saludGalpon(g)]));
+  const conAlerta = activos.filter(g => saluds[g.id].nivel === 'warn' || saluds[g.id].nivel === 'crit');
+  const mortTotal7 = activos.reduce((a, g) => a + saluds[g.id].mort7, 0);
   $('#main').innerHTML = `
     <div class="tiles">
       <div class="tile"><div class="l">Inventario teórico</div><div class="v">${fmt(totalTeo || null)}</div><div class="mut">${activos.length} galpones activos</div></div>
       <div class="tile"><div class="l">Estimado por conteos</div><div class="v">${fmt(totalEst || null)}</div><div class="mut">Última sesión por galpón</div></div>
     </div>
+    ${activos.length ? (conAlerta.length
+      ? `<div class="hint" style="background:color-mix(in srgb, var(--warning) 14%, transparent)">⚠ <b>${conAlerta.length} ${conAlerta.length > 1 ? 'galpones' : 'galpón'} para revisar</b> — ${conAlerta.map(g => esc(g.nombre)).join(', ')}. Mortalidad total 7 días: ${fmt(mortTotal7)}.</div>`
+      : `<div class="hint" style="background:color-mix(in srgb, var(--good) 10%, transparent)">✓ <b>Todo en orden</b> — sin alertas de conteo ni mortalidad. Mortalidad total 7 días: ${fmt(mortTotal7)}.</div>`) : ''}
+    ${activos.length ? `<button class="back" onclick="go('guia')" style="margin-bottom:12px">📖 Guía de terreno: qué mirar y reportar ›</button>` : ''}
     <h2 class="sec">Desviación por galpón</h2>
     <div class="card">
       ${activos.map(g => {
@@ -522,18 +588,65 @@ function viewGalpones() {
     </div>
     <h2 class="sec">Galpones</h2>
     ${activos.map(g => {
-      const s = ultimaSesion(g.id);
-      const d = s ? desv(s.inventario_estimado, s.inventario_teorico_snapshot ?? g.inventario_teorico) : null;
-      return `<div class="card row">
-        <div>
+      const h = saluds[g.id];
+      return `<div class="card">
+        <div class="row">
           <h3>${esc(g.nombre)}</h3>
-          <div class="sub">Teórico ${fmt(g.inventario_teorico)} · Estimado ${s ? fmt(s.inventario_estimado) : '—'}</div>
-          <div class="mut">${s ? 'Último conteo: ' + fecha(s.cerrada_at) : 'Sin conteos aún'} · ${g.num_zonas} zonas</div>
+          ${chipSalud(h.nivel)}
         </div>
-        ${statusChip(d)}
+        <div class="sub">Teórico ${fmt(g.inventario_teorico)} · Estimado ${h.s ? fmt(h.s.inventario_estimado) : '—'}${h.d != null ? ` (${h.d > 0 ? '+' : ''}${h.d.toFixed(1)}%)` : ''}</div>
+        <div class="mut">${h.s ? 'Último conteo: ' + fecha(h.s.cerrada_at) : 'Sin conteos aún'} · Mortalidad 7 días: ${fmt(h.mort7)}${h.pctMort != null ? ` (${h.pctMort.toFixed(2)}%)` : ''}</div>
+        ${h.razon ? `<div class="mut" style="margin-top:4px;color:${h.nivel === 'crit' ? 'var(--critical)' : 'var(--ink-2)'}">${h.nivel === 'crit' ? '✕' : '⚠'} ${h.razon}</div>` : ''}
       </div>`;
     }).join('')}
     <button class="btn" onclick="go('conteo')" style="margin-top:6px">Iniciar conteo</button>
+  `;
+}
+
+/* ---------- Guía de terreno ----------
+   Qué mirar cuando el panel marca ⚠/✕. Resúmenes propios de fichas de
+   El Sitio Avícola (atlas de I. Dinev); la guía orienta QUÉ REPORTAR,
+   el diagnóstico es del veterinario. Funciona sin señal (va en la app). */
+function viewGuia() {
+  const F = 'https://www.elsitioavicola.com/publications/6/enfermedades-de-las-aves/';
+  const item = (titulo, texto, ficha) => `
+    <div class="list-item">
+      <b>${titulo}</b>
+      <div class="sub" style="margin-top:2px">${texto}</div>
+      ${ficha ? `<a class="mut" href="${F}${ficha}/" target="_blank" rel="noopener">Ver ficha completa ›</a>` : ''}
+    </div>`;
+  $('#main').innerHTML = `
+    <button class="back" onclick="go('galpones')">‹ Volver</button>
+    <h2 class="sec">Guía de terreno — qué mirar y reportar</h2>
+    <div class="hint">La app avisa <b>a qué galpón entrar</b>; esta guía dice <b>qué observar</b> al entrar.
+    El diagnóstico es del veterinario: aquí solo juntas señales para reportar bien.
+    Y la regla de oro: <b>registrar la mortalidad todos los días</b>, aunque sea 0.</div>
+
+    <div class="card">
+      <h3>Si hay muertes súbitas o la mortalidad saltó</h3>
+      ${item('Cólera aviar', 'Primer aviso típico: muerte súbita. En vivas: sin apetito, plumas erizadas, descarga nasal u oral, diarrea blanca o grisácea acuosa. Más frecuente a fines de verano, otoño e invierno.', 249)}
+      ${item('Enteritis necrótica', 'Alza brusca de la mortalidad con aves muy deshidratadas. La favorecen la coccidiosis previa, parásitos y dietas con mucha humedad o harina de pescado.', 255)}
+      ${item('Calor: sobrecalentamiento y asfixia', 'Sobre ~35 °C las aves solo se enfrían jadeando; el jadeo extremo las asfixia. Aves jadeando con alas separadas = actuar ya con ventilación y agua.', 332)}
+    </div>
+
+    <div class="card">
+      <h3>Si ves señales en las heces o la cloaca</h3>
+      ${item('Coccidiosis', 'Heces con sangre y cloaca sucia de sangre, plumas erizadas, aves somnolientas y pálidas (anemia). Se maneja con coccidiostatos en rotación o vacuna.', 292)}
+      ${item('Colibacilosis (E. coli)', 'Diarrea con deshidratación; en pollitos de días la mortalidad puede llegar a 5–6%. También da cojera y postración. La favorecen la higiene deficiente y huevos de piso.', 243)}
+      ${item('Salmonelosis (pullorosis / tifoidea)', 'Grupo de infecciones por Salmonella; importan también por inocuidad de los huevos. Ante sospecha, muestras al laboratorio.', 244)}
+    </div>
+
+    <div class="card">
+      <h3>Si ves señales en cara, cuello o comportamiento</h3>
+      ${item('Newcastle', 'GRAVÍSIMA: cuello torcido, tambaleo, parálisis de patas, señales respiratorias; la mortalidad puede llegar a 70–100%. Veterinario de inmediato y aislar el galpón.', 275)}
+      ${item('Coriza infecciosa', 'Cara hinchada (seno bajo el ojo), descarga nasal que se seca alrededor de los orificios, barbillas hinchadas. Baja el consumo y la postura. Se confunde con cólera.', 263)}
+      ${item('Canibalismo / picoteo', 'Picoteo de plumas o de cloaca (típico al inicio de postura). Lo favorecen la luz muy intensa, la sobrepoblación y el alimento peletizado; ayuda alimento molido y bajar la luz.', 317)}
+      ${item('Impactación de buche', 'Bulto firme al palpar el buche por comer cama o fibra; puede dañar la pared y la piel. Revisar estado de la cama y acceso al alimento.', 341)}
+    </div>
+
+    <div class="mut" style="margin:4px 0 14px">Resúmenes propios de las fichas de El Sitio Avícola
+    (atlas de patología aviar de I. Dinev). El índice completo tiene 101 fichas:
+    <a href="${F}" target="_blank" rel="noopener">ver todas ›</a></div>
   `;
 }
 
@@ -880,18 +993,33 @@ async function extraerCuadros(file, maximo = 8) {
         cuadros.push(cv.toDataURL('image/jpeg', 0.8).split(',')[1]);
       } catch { /* un cuadro fallido no detiene el resto */ }
     }
-    return cuadros;
-  } catch { return []; }
+    return { cuadros, dur };
+  } catch { return { cuadros: [], dur: 0 }; }
   finally { URL.revokeObjectURL(url); }
 }
 
 // Sube el video DIRECTO al almacenamiento con una URL firmada del servidor.
 async function subirVideo(file, galponId, alProgreso) {
   const { path, token } = await api('/videos/subir-url', { galpon_id: galponId });
-  alProgreso && alProgreso('Subiendo video (' + Math.round(file.size / 1048576) + ' MB)…');
-  const r = await fetch(`${SUPA_URL}/storage/v1/object/upload/sign/avicount/${path}?token=${encodeURIComponent(token)}`,
-    { method: 'PUT', headers: { 'Content-Type': file.type || 'video/mp4' }, body: file });
-  if (!r.ok) throw new Error('No se pudo subir el video (' + r.status + ')');
+  const mb = Math.max(1, Math.round(file.size / 1048576));
+  alProgreso && alProgreso(`Subiendo video (${mb} MB)… 0%`);
+  // XHR y no fetch: fetch no informa el progreso de SUBIDA, y con la señal
+  // del campo el operario necesita ver que el video avanza.
+  await new Promise((res, rej) => {
+    const x = new XMLHttpRequest();
+    x.open('PUT', `${SUPA_URL}/storage/v1/object/upload/sign/avicount/${path}?token=${encodeURIComponent(token)}`);
+    x.setRequestHeader('Content-Type', file.type || 'video/mp4');
+    x.timeout = 600000;
+    x.upload.onprogress = (ev) => {
+      if (ev.lengthComputable && alProgreso) {
+        alProgreso(`Subiendo video (${mb} MB)… ${Math.round(ev.loaded / ev.total * 100)}%`);
+      }
+    };
+    x.onload = () => x.status >= 200 && x.status < 300 ? res() : rej(new Error('No se pudo subir el video (' + x.status + ')'));
+    x.onerror = () => rej(new Error('No se pudo subir el video (red)'));
+    x.ontimeout = () => rej(new Error('No se pudo subir el video (tiempo agotado)'));
+    x.send(file);
+  });
   return path;
 }
 
@@ -906,7 +1034,10 @@ const manejarVideo = async e => {
   try {
     // 1) Cuadros para el dataset (se extraen en el teléfono, siempre)
     p.progreso = 'Extrayendo fotos del video…'; render();
-    p.cuadros = await extraerCuadros(file, 8);
+    const ext = await extraerCuadros(file, 8);
+    p.cuadros = ext.cuadros;
+    p.videoSeg = Math.round(ext.dur || 0);
+    p.videoMB = Math.max(1, Math.round(file.size / 1048576));
 
     // 2) Con modelo: el servidor de la granja cuenta el recorrido
     if (state.modeloUrl && p.modo === 'recorrido') {
@@ -969,13 +1100,18 @@ function viewVideoResultado() {
         : `<div class="tile"><div class="l">Movimiento</div><div class="v" style="font-size:18px">${TIPOS_MOV[p.tipoMov]}</div><div class="mut">Conteo exacto</div></div>`}
     </div>` : `
     <div class="card">
-      <div class="sub">${p.videoPath ? '✅ Video guardado en tu nube' : '⚠ El video no alcanzó a subir'} · ${(p.cuadros || []).length} foto(s) extraída(s) para el dataset de entrenamiento.</div>
+      ${(p.cuadros || []).length ? `<div style="display:flex;gap:12px;align-items:center;margin-bottom:10px">
+        <img src="data:image/jpeg;base64,${p.cuadros[0]}" alt="" style="width:96px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border);flex-shrink:0">
+        <div class="sub">Tu video: ${p.videoSeg ? p.videoSeg + ' s · ' : ''}${p.videoMB || '?'} MB<br><span class="mut">${(p.cuadros || []).length} foto(s) extraída(s) para entrenar</span></div>
+      </div>` : ''}
+      <div class="sub">${p.videoPath ? '✅ Video guardado en tu nube' : '⚠ El video no alcanzó a subir (las fotos extraídas se guardan igual)'}</div>
       <label>¿Contaste las aves en este recorrido? (opcional)</label>
       <div class="stepper">
         <button onclick="ajustarVideoManual(-10)">−</button>
-        <input type="number" inputmode="numeric" id="videoManual" value="${p.cantidadManual || 0}" onchange="state.puerta.cantidadManual=Math.max(0,parseInt(this.value)||0)">
+        <input type="number" inputmode="numeric" id="videoManual" value="${p.cantidadManual || 0}" oninput="state.puerta.cantidadManual=Math.max(0,parseInt(this.value)||0);pintarEstimadoVivo()">
         <button onclick="ajustarVideoManual(10)">+</button>
       </div>
+      <div style="text-align:center;min-height:20px" id="estimadoVivo"></div>
       <div class="mut" style="text-align:center">Deja 0 para guardar solo el material. Se aplica el factor de video (× ${g.factor_video || 1}).</div>
     </div>`}
     <button class="btn" ${p.enviando ? 'disabled' : ''} onclick="guardarVideo()">${p.enviando ? 'Guardando…' : 'Guardar'}</button>
@@ -988,6 +1124,24 @@ function ajustarVideoManual(paso) {
   p.cantidadManual = Math.max(0, (p.cantidadManual || 0) + paso);
   const inp = document.getElementById('videoManual');
   if (inp) inp.value = p.cantidadManual;
+  pintarEstimadoVivo();
+}
+
+// Muestra el cálculo al tiro mientras se anota el conteo (n × factor =
+// estimado y su desviación): el operario ve lo que va a guardar ANTES de
+// guardarlo, y pilla al vuelo un número mal tecleado.
+function pintarEstimadoVivo() {
+  const el = document.getElementById('estimadoVivo');
+  const p = state.puerta;
+  if (!el || !p) return;
+  const g = state.galpones.find(x => x.id === p.galponId);
+  const n = p.cantidadManual || 0;
+  if (!n || !g) { el.innerHTML = ''; return; }
+  const f = g.factor_video || 1;
+  const est = Math.round(n * f);
+  const d = desv(est, g.inventario_teorico);
+  el.innerHTML = `<span class="sub"><b>${fmt(n)}</b> × ${f} = <b>${fmt(est)}</b> estimado</span> ` +
+    (d != null ? statusChip(d) : '<span class="mut">(sin teórico)</span>');
 }
 
 async function guardarVideo() {
@@ -1117,6 +1271,7 @@ function viewAjustes() {
   const cola = LS.get('cola', []);
   const descartados = LS.get('descartados', []);
   $('#main').innerHTML = `
+    <button class="back" onclick="go('guia')" style="margin-bottom:2px">📖 Guía de terreno (señales y enfermedades) ›</button>
     <h2 class="sec">Galpones</h2>
     <div class="card">
       ${state.galpones.map(g => `<div class="list-item row">
