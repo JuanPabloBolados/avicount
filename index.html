@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AviCount">
-<link rel="manifest" href='data:application/manifest+json,{"name":"AviCount","short_name":"AviCount","display":"standalone","background_color":"%23f9f9f7","theme_color":"%232a78d6","start_url":".","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%232a78d6%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2752%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27 font-weight=%27bold%27%3EAv%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
+<link rel="manifest" href='data:application/manifest+json,{"name":"AviCount — Conteo","short_name":"AviCount","display":"standalone","background_color":"%23f9f9f7","theme_color":"%232a78d6","start_url":".","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%232a78d6%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2752%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27 font-weight=%27bold%27%3EAv%3C/text%3E%3C/svg%3E","sizes":"any","type":"image/svg+xml"}]}'>
 <title>AviCount</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%232a78d6%27/%3E%3Ctext x=%2750%27 y=%2768%27 font-size=%2752%27 text-anchor=%27middle%27 fill=%27white%27 font-family=%27sans-serif%27 font-weight=%27bold%27%3EAv%3C/text%3E%3C/svg%3E">
 <style>
@@ -115,12 +115,39 @@
   }
   .toast.show { opacity: .95; }
   .login-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 24px 80px; }
+
+  /* --- Frente v2: jerarquía, medidores y pulido táctil --- */
+  .card { border-radius: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 18px rgba(0,0,0,.04); }
+  .btn { transition: transform .06s ease; }
+  .btn:active { transform: scale(.975); }
+  nav { box-shadow: 0 -6px 18px rgba(0,0,0,.07); }
+  .applogo { width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: #fff;
+    font-weight: 800; font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center;
+    margin-right: 8px; letter-spacing: -0.5px; flex-shrink: 0; }
+  .hero { padding: 18px 16px 16px; }
+  .hero .lbl { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .hero .big { font-size: 42px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin: 4px 0 2px;
+    font-variant-numeric: tabular-nums; }
+  .meter { height: 10px; background: var(--grid); border-radius: 6px; overflow: hidden; margin-top: 10px; }
+  .meter i { display: block; height: 100%; background: var(--accent); border-radius: 6px; min-width: 4px; }
+  .mbar { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+  .mbar .l { width: 88px; font-size: 11.5px; color: var(--ink-2); flex-shrink: 0; }
+  .mbar .t { flex: 1; height: 8px; background: color-mix(in srgb, var(--grid) 55%, transparent); border-radius: 4px; }
+  .mbar .t i { display: block; height: 100%; border-radius: 4px; min-width: 3px; }
+  .mbar .v { width: 40px; text-align: right; font-size: 12px; font-weight: 600; color: var(--ink-1);
+    font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .xapp { display: block; text-decoration: none; color: inherit; }
+  .xapp .card { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin-top: 10px; }
+  .leyenda span { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .fade-in { animation: fadein .16s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Avi<span>Count</span></h1>
+  <div style="display:flex;align-items:center"><span class="applogo">Av</span><h1>Avi<span>Count</span></h1></div>
   <span class="badge" id="modeBadge">·</span>
 </header>
 
@@ -134,7 +161,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION = 'v1.6.3 · 31-ago-2026';
+const APP_VERSION = 'AviCount v2.0.0 · 31-ago-2026';
 
 // Proyecto propio (la clave publishable es pública por diseño; los datos
 // están protegidos por RLS y solo se accede vía la API con credenciales).
@@ -188,7 +215,6 @@ const state = {
   galpones: [],
   sesiones: [],
   movimientos: [],
-  mortalidad14: [],
   cargando: false,
   conteo: null,
   puerta: null,
@@ -331,7 +357,6 @@ async function cargarEstado() {
     state.galpones = d.galpones || [];
     state.sesiones = d.sesiones || [];
     state.movimientos = d.movimientos || [];
-    state.mortalidad14 = d.mortalidad_14d || [];
     // El modelo se publica una vez en el servidor y llega a toda la flota.
     // Se guarda para que siga disponible aunque la app arranque sin señal.
     if (d.modelo) LS.set('modeloUrlServidor', d.modelo.url || '');
@@ -360,7 +385,12 @@ function renderNav() {
     </button>`).join('');
 }
 
-function go(v) { state.view = v; render(); }
+function go(v) {
+  state.view = v;
+  const m = $('#main');
+  m.classList.remove('fade-in'); void m.offsetWidth; m.classList.add('fade-in');
+  render();
+}
 
 function render() {
   renderNav();
@@ -378,7 +408,6 @@ function render() {
   if (v === 'historial') return viewHistorial();
   if (v === 'ajustes') return viewAjustes();
   if (v === 'galponForm') return viewGalponForm();
-  if (v === 'guia') return viewGuia();
 }
 
 /* ---------- Login ---------- */
@@ -386,7 +415,7 @@ function viewLogin() {
   $('#main').innerHTML = `
     <div class="login-wrap">
       <h2 style="font-size:22px;margin-bottom:6px">Bienvenido a AviCount</h2>
-      <div class="sub" style="margin-bottom:18px">Conteo de aves por visión.</div>
+      <div class="sub" style="margin-bottom:18px">Conteo de aves por visión. La sanidad vive en su propia app: AviSalud.</div>
       ${sb ? `
       <button class="btn" style="background:var(--surface-1);color:var(--ink-1);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:10px" onclick="entrarConGoogle()">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.7l6.2 5.2C40.9 35.6 44 30.3 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>
@@ -494,60 +523,14 @@ async function login() {
 /* ---------- Dashboard ---------- */
 function ultimaSesion(gid) { return state.sesiones.find(s => s.galpon_id === gid && s.estado === 'cerrada'); }
 
-/* ---------- Salud del galpón ("de un vistazo") ----------
-   Reglas simples y explicables, con los datos que ya registramos:
-   · Conteo: desviación del último conteo cerrado (±2% ✓ · ±5% ⚠ · más ✕).
-   · Mortalidad: esta semana vs. la anterior, y % sobre el teórico.
-     Umbral por defecto: >1% semanal o el doble de la semana anterior
-     (con mínimo de aves para no alarmar por 2 ó 3). Ajustable a criterio.
-   · Frecuencia: el protocolo es contar cada semana; >7 días ⚠, >14 ✕. */
-function saludGalpon(g) {
-  const ahora = Date.now();
+/* ---------- Estado de conteo por galpón ----------
+   Solo lo que le importa a ESTA app: qué tan al día y qué tan cuadrado
+   está el conteo. La sanidad (mortalidad, semáforo) vive en AviSalud. */
+function conteoEstado(g) {
   const s = ultimaSesion(g.id);
   const d = s ? desv(s.inventario_estimado, s.inventario_teorico_snapshot ?? g.inventario_teorico) : null;
-
-  let mort7 = 0, mortPrev = 0;
-  for (const m of (state.mortalidad14 || [])) {
-    if (m.galpon_id !== g.id) continue;
-    const dias = (ahora - new Date(m.registrado_at).getTime()) / 86400000;
-    if (dias < 0) continue;
-    if (dias <= 7) mort7 += m.cantidad || 0;
-    else if (dias <= 14) mortPrev += m.cantidad || 0;
-  }
-  const pctMort = g.inventario_teorico ? mort7 / g.inventario_teorico * 100 : null;
-
-  const problemas = [];   // [nivel, texto] — nivel 2 = crítico, 1 = revisar
-  if (d != null && Math.abs(d) > 2) {
-    problemas.push([Math.abs(d) > 5 ? 2 : 1, `Conteo ${d > 0 ? '+' : ''}${d.toFixed(1)}% vs teórico`]);
-  }
-  if ((pctMort != null && pctMort > 1 && mort7 >= 10) || (mort7 >= 10 && mort7 >= 2 * Math.max(mortPrev, 1))) {
-    problemas.push([2, `Mortalidad alta: ${fmt(mort7)} en 7 días${pctMort != null ? ` (${pctMort.toFixed(2)}%)` : ''} vs ${fmt(mortPrev)} la semana anterior`]);
-  } else if (mort7 >= 5 && mort7 > mortPrev) {
-    problemas.push([1, `Mortalidad subió: ${fmt(mort7)} esta semana vs ${fmt(mortPrev)} la anterior`]);
-  }
-  let diasSin = null;
-  if (s && s.cerrada_at) {
-    diasSin = Math.floor((ahora - new Date(s.cerrada_at).getTime()) / 86400000);
-    if (diasSin > 7) problemas.push([diasSin > 14 ? 2 : 1, `${diasSin} días sin conteo (protocolo: semanal)`]);
-  }
-
-  let nivel, razon = null;
-  if (!s && !mort7 && !mortPrev) {
-    nivel = 'pendiente';
-  } else {
-    if (!s) problemas.push([1, 'Sin conteos aún']);
-    problemas.sort((a, b) => b[0] - a[0]);
-    nivel = problemas.length ? (problemas[0][0] === 2 ? 'crit' : 'warn') : 'ok';
-    razon = problemas.length ? problemas[0][1] : null;
-  }
-  return { nivel, razon, mort7, mortPrev, pctMort, diasSin, d, s };
-}
-
-function chipSalud(nivel) {
-  if (nivel === 'ok') return '<span class="status ok">✓ Sano</span>';
-  if (nivel === 'warn') return '<span class="status warn">⚠ Revisar</span>';
-  if (nivel === 'crit') return '<span class="status crit">✕ Atención</span>';
-  return '<span class="status pending">Sin datos</span>';
+  const dias = s && s.cerrada_at ? Math.floor((Date.now() - new Date(s.cerrada_at).getTime()) / 86400000) : null;
+  return { s, d, dias, vencido: dias != null && dias > 7 };
 }
 
 function viewGalpones() {
@@ -556,650 +539,52 @@ function viewGalpones() {
     return;
   }
   const activos = state.galpones.filter(g => g.activo);
+  const estados = Object.fromEntries(activos.map(g => [g.id, conteoEstado(g)]));
   const totalTeo = activos.reduce((a, g) => a + (g.inventario_teorico || 0), 0);
-  const totalEst = activos.reduce((a, g) => a + (ultimaSesion(g.id)?.inventario_estimado ?? 0), 0);
-  const saluds = Object.fromEntries(activos.map(g => [g.id, saludGalpon(g)]));
-  const conAlerta = activos.filter(g => saluds[g.id].nivel === 'warn' || saluds[g.id].nivel === 'crit');
-  const mortTotal7 = activos.reduce((a, g) => a + saluds[g.id].mort7, 0);
+  const totalEst = activos.reduce((a, g) => a + (estados[g.id].s?.inventario_estimado ?? 0), 0);
+  const dTotal = desv(totalEst || null, totalTeo || null);
+  const vencidos = activos.filter(g => estados[g.id].vencido || !estados[g.id].s);
+  const pct = totalTeo ? Math.max(2, Math.min(100, totalEst / totalTeo * 100)) : 0;
   $('#main').innerHTML = `
-    <div class="tiles">
-      <div class="tile"><div class="l">Inventario teórico</div><div class="v">${fmt(totalTeo || null)}</div><div class="mut">${activos.length} galpones activos</div></div>
-      <div class="tile"><div class="l">Estimado por conteos</div><div class="v">${fmt(totalEst || null)}</div><div class="mut">Última sesión por galpón</div></div>
+    <div class="card hero">
+      <div class="lbl">Aves en los galpones · estimado por conteos</div>
+      <div class="big">${fmt(totalEst || null)}</div>
+      <div class="row"><span class="sub">de ${fmt(totalTeo || null)} teóricas en ${activos.length} ${activos.length === 1 ? 'galpón' : 'galpones'}</span>${statusChip(dTotal)}</div>
+      <div class="meter" role="img" aria-label="Estimado sobre teórico"><i style="width:${pct}%"></i></div>
     </div>
-    ${activos.length ? (conAlerta.length
-      ? `<div class="hint" style="background:color-mix(in srgb, var(--warning) 14%, transparent)">⚠ <b>${conAlerta.length} ${conAlerta.length > 1 ? 'galpones' : 'galpón'} para revisar</b> — ${conAlerta.map(g => esc(g.nombre)).join(', ')}. Mortalidad total 7 días: ${fmt(mortTotal7)}.</div>`
-      : `<div class="hint" style="background:color-mix(in srgb, var(--good) 10%, transparent)">✓ <b>Todo en orden</b> — sin alertas de conteo ni mortalidad. Mortalidad total 7 días: ${fmt(mortTotal7)}.</div>`) : ''}
-    ${activos.length ? `<button class="back" onclick="go('guia')" style="margin-bottom:12px">📖 Guía de terreno: qué mirar y reportar ›</button>` : ''}
-    <h2 class="sec">Desviación por galpón</h2>
-    <div class="card">
-      ${activos.map(g => {
-        const s = ultimaSesion(g.id);
-        const d = s ? desv(s.inventario_estimado, s.inventario_teorico_snapshot ?? g.inventario_teorico) : null;
-        const w = d == null ? 0 : Math.min(Math.abs(d) / 8 * 50, 50);
-        const col = d == null ? 'var(--grid)' : Math.abs(d) <= 2 ? 'var(--good)' : Math.abs(d) <= 5 ? 'var(--warning)' : 'var(--critical)';
-        return `<div class="bar-row">
-          <span class="bar-lbl">${esc(g.nombre)}</span>
-          <div class="bar-track"><span class="zero"></span>
-            ${d != null ? `<span class="bar" style="background:${col};width:${w}%;${d < 0 ? 'right:50%;border-radius:4px 0 0 4px;' : 'left:50%;'}"></span>` : ''}
-          </div>
-          <span class="bar-val">${d != null ? (d > 0 ? '+' : '') + d.toFixed(1) + '%' : '—'}</span>
-        </div>`;
-      }).join('') || '<div class="mut">Agrega galpones en Ajustes.</div>'}
-      <div class="mut" style="margin-top:10px">Último conteo vs. teórico. Alerta: ±2% ✓ · ±5% ⚠ · &gt;5% ✕</div>
-    </div>
+    ${vencidos.length ? `<div class="hint" style="background:color-mix(in srgb, var(--warning) 14%, transparent)">⏱ <b>${vencidos.length} ${vencidos.length === 1 ? 'galpón necesita' : 'galpones necesitan'} conteo</b> — el protocolo es contar cada semana: ${vencidos.map(g => esc(g.nombre)).join(', ')}.</div>` : (activos.length ? `<div class="hint" style="background:color-mix(in srgb, var(--good) 10%, transparent)">✓ <b>Conteos al día</b> — los ${activos.length} galpones contados esta semana.</div>` : '')}
+
     <h2 class="sec">Galpones</h2>
     ${activos.map(g => {
-      const h = saluds[g.id];
+      const e = estados[g.id];
+      const w = e.d == null ? 0 : Math.min(Math.abs(e.d) / 8 * 50, 50);
+      const col = e.d == null ? 'var(--grid)' : Math.abs(e.d) <= 2 ? 'var(--good)' : Math.abs(e.d) <= 5 ? 'var(--warning)' : 'var(--critical)';
       return `<div class="card">
-        <div class="row">
-          <h3>${esc(g.nombre)}</h3>
-          ${chipSalud(h.nivel)}
+        <div class="row"><h3>${esc(g.nombre)}</h3>${statusChip(e.d)}</div>
+        <div class="row" style="margin-top:4px">
+          <div><span style="font-size:24px;font-weight:800;letter-spacing:-0.5px;font-variant-numeric:tabular-nums">${e.s ? fmt(e.s.inventario_estimado) : '—'}</span>
+          <span class="mut">/ ${fmt(g.inventario_teorico)} teóricas</span></div>
         </div>
-        <div class="sub">Teórico ${fmt(g.inventario_teorico)} · Estimado ${h.s ? fmt(h.s.inventario_estimado) : '—'}${h.d != null ? ` (${h.d > 0 ? '+' : ''}${h.d.toFixed(1)}%)` : ''}</div>
-        <div class="mut">${h.s ? 'Último conteo: ' + fecha(h.s.cerrada_at) : 'Sin conteos aún'} · Mortalidad 7 días: ${fmt(h.mort7)}${h.pctMort != null ? ` (${h.pctMort.toFixed(2)}%)` : ''}</div>
-        ${h.razon ? `<div class="mut" style="margin-top:4px;color:${h.nivel === 'crit' ? 'var(--critical)' : 'var(--ink-2)'}">${h.nivel === 'crit' ? '✕' : '⚠'} ${h.razon}</div>` : ''}
-      </div>`;
-    }).join('')}
-    <button class="btn" onclick="go('conteo')" style="margin-top:6px">Iniciar conteo</button>
-  `;
-}
-
-/* ---------- Guía de terreno (contenido propio de AviCount) ----------
-   Enciclopedia de bolsillo: 44 males del galpón contados en criollo, con
-   apodo para acordarse, el dato que sorprende y qué hacer. Funciona sin
-   señal. Orienta QUÉ REPORTAR; el diagnóstico final es del veterinario. */
-const GUIA_CATS = [
-  { id: 'subitas', ic: '⚡', t: 'Muertes súbitas' },
-  { id: 'resp',    ic: '🫁', t: 'Respiratorio' },
-  { id: 'dig',     ic: '💩', t: 'Digestivo y heces' },
-  { id: 'nerv',    ic: '🧠', t: 'Nervioso' },
-  { id: 'post',    ic: '🥚', t: 'Postura y huevos' },
-  { id: 'patas',   ic: '🦵', t: 'Patas y cojeras' },
-  { id: 'piel',    ic: '🪶', t: 'Piel y plumas' },
-  { id: 'poll',    ic: '🐣', t: 'Pollitos' },
-  { id: 'tox',     ic: '☠️', t: 'Intoxicaciones' },
-  { id: 'tum',     ic: '🧬', t: 'Tumores' },
-  { id: 'pavos',   ic: '🦃', t: 'Pavos y patos' },
-  { id: 'raras',   ic: '🔬', t: 'Rarezas y hallazgos' },
-];
-
-// n: nombre · a: apodo · v: qué ves · d: el dato · h: qué hacer
-// urg: true = veterinario YA · dob: declaración obligatoria en Chile (SAG)
-const GUIA = [
-  // ⚡ Muertes súbitas
-  { c: 'subitas', n: 'Influenza aviar', a: 'La emergencia nacional', urg: 1, dob: 1,
-    v: 'Muertes masivas y rapidísimas sin aviso. En vivas: crestas y barbillas moradas e hinchadas, hemorragias en las patas, postura que se derrumba.',
-    d: 'La traen las aves silvestres. Un solo caso confirmado activa al SAG y puede cerrar exportaciones del país entero: es la enfermedad más vigilada de Chile.',
-    h: 'NO muevas aves, huevos ni equipos. Aísla el galpón y llama al tiro al veterinario.' },
-  { c: 'subitas', n: 'Newcastle', a: 'El tuerce-cuellos', urg: 1, dob: 1,
-    v: 'Cuellos torcidos, aves girando en círculos o con patas paralizadas, tos y jadeo. Sin vacuna puede matar casi todo el plantel.',
-    d: 'El virus viaja en el aire, la ropa, las ruedas y hasta en los huevos. La vacunación de rutina es lo único que lo mantiene lejos.',
-    h: 'Aislar y veterinario de inmediato. También es de declaración obligatoria.' },
-  { c: 'subitas', n: 'Cólera aviar', a: 'El madrugador de otoño', urg: 1,
-    v: 'Aves gordas y sanas amanecen muertas. En las vivas: diarrea verdosa o blanca, plumas erizadas, barbillas hinchadas si se vuelve crónico.',
-    d: 'La bacteria aprovecha el estrés y el clima cambiante: sus meses favoritos son fines de verano y otoño. Los roedores la cargan y la pasean.',
-    h: 'Retirar muertas ya, veterinario para tratamiento, y guerra a los ratones.' },
-  { c: 'subitas', n: 'Enteritis necrótica', a: 'La explosión intestinal', urg: 1,
-    v: 'La mortalidad se dispara en uno o dos días; aves deshidratadas, heces oscuras y fétidas.',
-    d: 'La bacteria vive en TODA cama, tranquila. Ataca cuando una coccidiosis previa o un cambio brusco de dieta le abre la puerta del intestino.',
-    h: 'Veterinario ya; revisar cama y qué cambió en el alimento esta semana.' },
-  { c: 'subitas', n: 'Golpe de calor (sobrecalentamiento)', a: 'El enemigo de enero', urg: 1,
-    v: 'Jadeo con alas separadas, aves buscando rincones frescos, mueren primero las más grandes y pesadas.',
-    d: 'La gallina no suda. Sobre ~35 °C solo se enfría jadeando, y el jadeo extremo la asfixia: se muere intentando respirar.',
-    h: 'Ventilación al máximo, agua fresca extra, bajar densidad. En ola de calor, ronda a mediodía.' },
-  { c: 'subitas', n: 'Botulismo', a: 'El cuello caído',
-    v: 'Parálisis blanda que sube: alas caídas, cuello laxo apoyado en el suelo, párpados que no abren.',
-    d: 'La toxina nace en cadáveres y materia podrida. Un ave muerta sin retirar se convierte en fábrica de veneno para las que picotean.',
-    h: 'Retirar toda fuente podrida, agua limpia, y veterinario.' },
-  { c: 'subitas', n: 'Ascitis (hipertensión pulmonar)', a: 'La barriga de agua',
-    v: 'Broilers con abdomen hinchado y piel morada, jadeo, mueren los más grandes.',
-    d: 'El corazón no da abasto con un cuerpo que crece tan rápido y se inunda el abdomen. El frío y la mala ventilación lo empeoran.',
-    h: 'Revisar temperatura y ventilación; conversar el ritmo de engorde con el asesor.' },
-  { c: 'subitas', n: 'Muerte súbita del broiler', a: 'El volteado',
-    v: 'Broilers grandes muertos de espalda, patas arriba, sin ninguna señal previa. Casi siempre machos.',
-    d: 'Es un paro cardíaco de crecimiento explosivo: el ave más linda del lote es la candidata. Aparece en lotes que comen sin freno.',
-    h: 'Revisar manejo de luz y alimento con el asesor; no hay tratamiento.' },
-  { c: 'subitas', n: 'Hígado graso', a: 'La ponedora golosa',
-    v: 'Ponedoras gordas mueren de golpe con la cresta pálida; la postura del grupo venía bajando.',
-    d: 'El hígado se llena de grasa hasta que un simple aleteo lo rompe por dentro. Típico de aves gordas con mucha energía en la dieta y poco ejercicio.',
-    h: 'Ajustar energía de la dieta con el asesor y controlar peso corporal.' },
-
-  // 🫁 Respiratorio
-  { c: 'resp', n: 'Bronquitis infecciosa', a: 'El arruga-huevos',
-    v: 'Estornudos, ronquidos y ojos llorosos que recorren TODO el galpón en pocos días. Semanas después: huevos deformes, arrugados o de cáscara blanda.',
-    d: 'Es uno de los virus más contagiosos que existen: en 48 horas puede visitarlas a todas. El daño en la "fábrica de cáscara" puede quedar para siempre.',
-    h: 'Veterinario; y vacunar los reemplazos, que es donde se gana esta pelea.' },
-  { c: 'resp', n: 'Laringotraqueítis', a: 'La tos con sangre', urg: 1,
-    v: 'Aves que estiran el cuello para poder respirar, tos que lanza moco con sangre, muertes por asfixia.',
-    d: 'Los brotes llegan caminando: ropa, jaulas prestadas y visitas de otros planteles. Es la enfermedad que castiga la bioseguridad floja.',
-    h: 'Aislar y veterinario ya. Nada de compartir equipos entre galpones.' },
-  { c: 'resp', n: 'Coriza infecciosa', a: 'La cara hinchada',
-    v: 'Hinchazón bajo el ojo, moco nasal que se seca en costra, MAL OLOR característico del galpón, baja el consumo y la postura.',
-    d: 'Las aves que se recuperan quedan portadoras de por vida: mezclar lotes de distintas edades es invitarla a quedarse.',
-    h: 'Veterinario para tratamiento; separar edades y mejorar ventilación.' },
-  { c: 'resp', n: 'Micoplasmosis (Mycoplasma gallisepticum)', a: 'La crónica',
-    v: 'Ruidos respiratorios que no se van en semanas, espuma en el lagrimal del ojo, lote desparejo con postura mediocre.',
-    d: 'Pasa de la madre al pollito DENTRO del huevo. Por eso se controla comprando aves certificadas libres, no con remedios.',
-    h: 'Plan de largo plazo con el veterinario; comprar reemplazos certificados.' },
-  { c: 'resp', n: 'Aspergilosis', a: 'El hongo de la cama mojada',
-    v: 'Jadeo sin moco ni ruidos (el hongo tapa por dentro), más frecuente y letal en pollitos.',
-    d: 'Crece en cama y alimento húmedos. Una sola esquina mojada del galpón es su criadero perfecto.',
-    h: 'Cambiar YA la cama húmeda, arreglar bebederos que gotean. No tiene tratamiento útil: se previene.' },
-  { c: 'resp', n: 'Cabeza hinchada', a: 'El globo',
-    v: 'Cabeza y contorno de ojos hinchados, aves apáticas, algún cuello torcido.',
-    d: 'Es un combo: un virus abre la puerta y la E. coli remata. El amoníaco alto y la mala ventilación son sus mejores amigos.',
-    h: 'Ventilar mejor desde hoy y llamar al veterinario.' },
-  { c: 'resp', n: 'Colibacilosis respiratoria', a: 'La oportunista',
-    v: 'Aves decaídas con respiración sucia después de un estrés o un virus; el lote venía golpeado de antes.',
-    d: 'La E. coli vive en toda cama esperando su momento: nunca es la primera en atacar, siempre remata al debilitado.',
-    h: 'Buscar la causa de fondo con el veterinario; cama seca y agua clorada.' },
-
-  // 💩 Digestivo y heces
-  { c: 'dig', n: 'Coccidiosis', a: 'El ladrón de sangre', urg: 1,
-    v: 'Heces con sangre o moco, aves pálidas, erizadas y somnolientas, cloacas sucias de sangre.',
-    d: 'El parásito necesita humedad para armarse: una cama mojada multiplica sus huevos por millones. La diferencia entre "nada" y "brote" la hace la cama.',
-    h: 'Veterinario (coccidiostato o tratamiento), secar la cama, revisar bebederos.' },
-  { c: 'dig', n: 'Salmonelosis', a: 'La doble amenaza',
-    v: 'Pollitos con diarrea blanca pegada a la cloaca y mortandad en la primera semana. En adultas casi no se nota, pero contamina los huevos.',
-    d: 'Enferma aves Y personas: por el huevo llega a la cocina. Por eso existen programas oficiales enteros dedicados solo a ella.',
-    h: 'Muestras al laboratorio; higiene estricta de nidos y huevos; control de roedores.' },
-  { c: 'dig', n: 'Colibacilosis', a: 'El termómetro de la higiene',
-    v: 'Diarrea, ombligos inflamados en pollitos, alguna cojera, decaimiento general del lote.',
-    d: 'La E. coli mide tu manejo: agua sucia, cama vieja y huevos de piso la disparan. Lote con colibacilosis = revisar rutinas.',
-    h: 'Clorar el agua, renovar cama, recoger huevos de piso temprano.' },
-  { c: 'dig', n: 'Enteritis ulcerativa', a: 'La silenciosa (enfermedad de la codorniz)',
-    v: 'Muertes sin drama: aves de aspecto casi normal que aparecen muertas; diarrea acuosa en algunas.',
-    d: 'La bacteria vive en el suelo y se acumula cuando la misma cama se usa una y otra vez.',
-    h: 'Veterinario; evaluar renovación completa de cama.' },
-  { c: 'dig', n: 'Parásitos internos', a: 'Los okupas (ascaridiosis, heterakidosis, raillietinosis)',
-    v: 'Lote desparejo y flaco que come bien sin engordar; a veces gusanos visibles en las heces.',
-    d: 'Los huevos del parásito aguantan MESES en la tierra del piso. Crianza al piso sin calendario de desparasitación = okupas asegurados.',
-    h: 'Desparasitar según calendario con el asesor; no improvisar dosis.' },
-  { c: 'dig', n: 'Histomoniasis (histomonosis)', a: 'La cabeza negra',
-    v: 'Heces color amarillo azufre, aves decaídas, cabeza oscurecida en algunas.',
-    d: 'Viaja de polizón DENTRO del huevo de otro parásito (el heterakis). Desparasitando matas dos pájaros de un tiro.',
-    h: 'Veterinario; y nunca criar pavos junto a gallinas: para el pavo es fulminante.' },
-  { c: 'dig', n: 'Candidiasis', a: 'El buche agrio',
-    v: 'Buche inflado y blando como globo de agua, aliento agrio, ave desganada.',
-    d: 'Es una levadura, parienta de la del pan. Aparece tras antibióticos largos o con agua sucia: se aprovecha del desorden.',
-    h: 'Higiene de bebederos a fondo; veterinario si hay varias.' },
-  { c: 'dig', n: 'Micotoxinas (aflatoxicosis)', a: 'El veneno del grano guardado',
-    v: 'Lote entero apagado sin enfermedad clara: comen menos, ponen menos, se enferman de todo.',
-    d: 'El hongo crece en granos mal guardados y deja su veneno impregnado. Aunque el hongo muera, el veneno queda: no se arregla ni cocinando.',
-    h: 'Revisar el alimento almacenado (olor, grumos, color), rotar stock, comprar grano seco.' },
-  { c: 'dig', n: 'Impactación de buche', a: 'El buche de piedra',
-    v: 'Bulto firme al palpar el buche; el ave traga y la comida no baja.',
-    d: 'Se tapona por comer cama, fibra larga o pasto duro. Si el tapón se pudre, daña la pared del buche y la piel de alrededor.',
-    h: 'Revisar la cama y el acceso al alimento; casos avanzados, veterinario.' },
-
-  // 🧠 Nervioso
-  { c: 'nerv', n: 'Marek', a: 'La parálisis del espagat',
-    v: 'Ave joven con una pata estirada adelante y la otra atrás (como haciendo espagat), alas caídas, a veces pupilas grises deformes.',
-    d: 'El virus vive MESES en el polvillo de las plumas que flota en el galpón. Por eso la vacuna se pone el primer día de vida: después ya es tarde.',
-    h: 'No tiene tratamiento. Confirmar con el veterinario y revisar que los reemplazos vengan vacunados.' },
-  { c: 'nerv', n: 'Encefalomielitis aviar', a: 'El temblor de pollito',
-    v: 'Pollitos de 1 a 3 semanas con temblor fino de cabeza y cuello, sentados sobre los garrones.',
-    d: 'Viene de la madre a través del huevo. Se corta vacunando a las reproductoras, no al pollito.',
-    h: 'Veterinario; los afectados no se recuperan. Revisar origen de los pollitos.' },
-  { c: 'nerv', n: 'Falta de vitamina B1 o vitamina E', a: 'El astrónomo (deficiencias)',
-    v: 'Cuello doblado hacia atrás "mirando las estrellas" (B1), o pollitos con la cabeza loca y equilibrio perdido (E).',
-    d: 'Casi nunca es infección: es alimento viejo o mal formulado. Las vitaminas se degradan solas con el tiempo y el calor de la bodega.',
-    h: 'Revisar fecha y almacenamiento del alimento; corregir la fórmula con el asesor.' },
-
-  // 🥚 Postura y huevos
-  { c: 'post', n: 'Síndrome de caída de la postura (EDS-76)', a: 'El ladrón de cáscaras',
-    v: 'La postura se derrumba sin aves enfermas a la vista; huevos pálidos, de cáscara fina o blanda, o sin cáscara. Ojo: la clara y la yema se ven normales, y el huevo rugoso como lija NO es de esta: ese es firma de bronquitis.',
-    d: 'Este virus entró al mundo por una vacuna contaminada hace décadas... y hoy se previene precisamente vacunando. Ironías de la avicultura.',
-    h: 'Antes de pensar en virus: revisar agua, horas de luz y calcio. Luego veterinario.' },
-  { c: 'post', n: 'Fatiga de la ponedora en jaula', a: 'Los huesos de vidrio',
-    v: 'Ponedoras que no logran pararse, huesos que se quiebran al manipularlas.',
-    d: 'Cada cáscara lleva unos 2 gramos de calcio: una gran ponedora que no lo repone en la dieta se lo saca de su propio esqueleto hasta quedar de vidrio.',
-    h: 'Revisar calcio, fósforo y vitamina D con el asesor; conchuela gruesa por la tarde ayuda.' },
-  { c: 'post', n: 'Prolapso y picaje de cloaca', a: 'El efecto dominó', urg: 1,
-    v: 'Cloaca salida después de poner, o picoteada y sangrando por las compañeras.',
-    d: 'La gallina picotea lo rojo por puro instinto: UNA cloaca sangrando puede desatar canibalismo en cadena. Retirarla a tiempo salva al lote entero.',
-    h: 'Separar YA a la afectada, bajar intensidad de luz, revisar tamaño de huevo (huevo gigante = más prolapsos).' },
-  { c: 'post', n: 'Gota', a: 'La escarcha en las vísceras',
-    v: 'Aves decaídas que mueren; por dentro, los órganos aparecen como espolvoreados con tiza blanca.',
-    d: 'Es el riñón que falló: el ácido úrico cristalizó donde no debía. Culpables típicos: exceso de calcio en pollitas jóvenes o aves que pasaron sed.',
-    h: 'Calcio según la edad (la pollita NO come dieta de ponedora) y agua disponible SIEMPRE.' },
-
-  // 🦵 Patas y cojeras
-  { c: 'patas', n: 'Raquitismo', a: 'Los huesos de goma',
-    v: 'Aves jóvenes con patas torcidas y blandas, picos que se doblan, crecimiento frenado.',
-    d: 'Falta calcio, fósforo o vitamina D. El esqueleto joven es plastilina: con la dieta corregida a tiempo, se endereza.',
-    h: 'Corregir el alimento con el asesor cuanto antes.' },
-  { c: 'patas', n: 'Perosis', a: 'El tendón zafado',
-    v: 'Garrón hinchado; el tendón se sale de su riel y la pata queda doblada hacia afuera.',
-    d: 'Clásico de dietas caseras sin minerales (manganeso). Con alimento comercial completo casi no existe.',
-    h: 'Corregir la dieta; el tendón que ya se zafó no vuelve a su lugar.' },
-  { c: 'patas', n: 'Pododermatitis', a: 'El callo de cama mojada',
-    v: 'Plantas de las patas con costras negras y heridas; aves que caminan lo mínimo.',
-    d: 'Es el medidor de humedad más honesto del galpón: patas sanas = cama seca. Patas quemadas = amoníaco y agua de más.',
-    h: 'Mejorar la cama HOY: más viruta, arreglar bebederos, ventilar.' },
-  { c: 'patas', n: 'Necrosis de la cabeza femoral', a: 'La cadera traicionada',
-    v: 'Broilers grandes que amanecen cojeando sin golpe visible; la cojera avanza rápido.',
-    d: 'Bacterias que viajaron por la sangre desde un intestino dañado se instalan en la cadera y matan el hueso por dentro. La cojera es el final de la película.',
-    h: 'Veterinario; y mirar la salud intestinal del lote, que es donde empezó todo.' },
-
-  // 🪶 Piel y plumas
-  { c: 'piel', n: 'Viruela aviar', a: 'Las verrugas del zancudo',
-    v: 'Costras y verrugas en cresta, barbillas y párpados. La forma interna pone placas amarillas en la boca que pueden ahogar.',
-    d: 'La transmiten los ZANCUDOS: los brotes llegan después de veranos con mosquitera. Donde hay agua estancada, hay viruela esperando.',
-    h: 'Vacunar (punción en el ala), aislar afectadas, eliminar aguas estancadas.' },
-  { c: 'piel', n: 'Ácaro rojo y piojos', a: 'Los vampiros nocturnos',
-    v: 'Aves inquietas de noche, pálidas, con postura baja; picoteo constante de plumas.',
-    d: 'El ácaro rojo NO vive en el ave: de día se esconde en grietas de perchas y nidos, y de noche sale a chupar sangre. Pásale un papel blanco a las ranuras de noche: si sale rayado rojo, ahí están.',
-    h: 'Tratar el GALPÓN (grietas, perchas, nidos), no solo las aves. Repetir a la semana.' },
-  { c: 'piel', n: 'Patas escamosas (knemidokoptosis)', a: 'El ácaro albañil',
-    v: 'Patas con escamas levantadas y costras grises como cemento mal aplicado.',
-    d: 'Es un ácaro microscópico que cava túneles BAJO las escamas y vive años ahí. Viejo conocido de las aves de traspatio.',
-    h: 'Aceitar o tratar las patas (asfixia al ácaro), limpiar perchas.' },
-  { c: 'piel', n: 'Canibalismo', a: 'La chispa que incendia',
-    v: 'Picoteo de plumas, dedos o cloacas. Empiezan dos o tres y se contagia como moda.',
-    d: 'Exceso de luz, calor, aburrimiento y hacinamiento son los fósforos. El alimento molido (más tiempo comiendo) es un extintor barato.',
-    h: 'Bajar la luz, retirar heridas YA, revisar densidad y dieta.' },
-  { c: 'piel', n: 'Dermatitis gangrenosa', a: 'La piel morada', urg: 1,
-    v: 'Parches de piel oscura y húmeda que se desprende, olor fuerte, muerte rápida.',
-    d: 'Bacterias de la cama entran por rasguños y encuentran un ave con defensas bajas — frecuente después de un Gumboro mal controlado.',
-    h: 'Veterinario ya; revisar cama y el historial de vacunas del lote.' },
-
-  // 🐣 Pollitos
-  { c: 'poll', n: 'Gumboro (enfermedad de la Bursa)', a: 'El destructor de defensas',
-    v: 'Pollitos de 3 a 6 semanas decaídos, con diarrea acuosa blanquecina, picoteándose la cloaca. La mortandad hace un pico de 3-4 días y baja sola.',
-    d: 'Destruye la bursa, el órgano donde el pollito fabrica sus defensas. Los sobrevivientes quedan desarmados contra TODO lo que venga después. Por eso esta vacuna es sagrada.',
-    h: 'Veterinario y revisión del plan de vacunación completo.' },
-  { c: 'poll', n: 'Onfalitis', a: 'El ombligo sucio',
-    v: 'Pollitos de días con el ombligo inflamado, abdomen hinchado y olor desagradable; mueren la primera semana.',
-    d: 'Nace en la incubación: huevos sucios de piso o nidos cochinos siembran la infección antes de que el pollito rompa el cascarón.',
-    h: 'Recoger huevos de piso temprano y nunca incubarlos; higiene del nacimiento.' },
-  { c: 'poll', n: 'Hipoglicemia del pollito (HSMS)', a: 'El bajón de energía',
-    v: 'Pollitos de 1 a 2 semanas tambaleando, como ciegos, que mueren en horas.',
-    d: 'El pollito casi no tiene reservas: si el alimento o la luz le fallan unas horas (comederos vacíos, corte de luz), el motor se apaga.',
-    h: 'Alimento y luz continuos los primeros días; contar comederos por ave.' },
-  { c: 'poll', n: 'Pullorosis', a: 'La diarrea blanca',
-    v: 'Pollitos con pasta blanca pegada en la cloaca, amontonados y piando, mortandad temprana.',
-    d: 'Es la salmonela de los pollitos, transmitida desde la madre por el huevo. Marcó la historia: fue de las primeras enfermedades con programa mundial de erradicación.',
-    h: 'Laboratorio para confirmar; revisar el origen de los pollitos.' },
-
-  { c: 'subitas', n: "Septicemia por Streptococcus", a: "La muerte con cresta morada",
-    v: "Aves en buen estado que aparecen muertas con cresta y barbillas moradas; en la forma lenta, cojeras y decaimiento por infección del corazón.",
-    d: "La bacteria entra por heridas o por la cama sucia y viaja en la sangre. La forma crónica se instala en las válvulas del corazón y suelta émbolos.",
-    h: "Veterinario; revisar heridas, despique y estado de la cama." },
-  { c: 'resp', n: "Clamidiosis", a: "La que también enferma personas", urg: 1,
-    v: "Aves decaídas con ojos inflamados, descarga nasal y diarrea verdosa. Más común donde hay contacto con palomas o aves silvestres.",
-    d: "Es ZOONOSIS: puede pasar a las personas por el polvillo y dar una fiebre tipo gripe (psitacosis). Ave sospechosa se maneja con mascarilla.",
-    h: "Veterinario y laboratorio; protegerse al limpiar; alejar palomas." },
-  { c: 'resp', n: "Asfixia por obstrucción", a: "El atoro",
-    v: "Un ave sola que estira el cuello, boquea y muere: algo le tapó la tráquea (placa de viruela húmeda, laringotraqueítis o un cuerpo extraño).",
-    d: "Casi nunca es \"el lote\": es UN ave tapada. Pero si se repite, hay una enfermedad de fondo poniendo placas en la garganta.",
-    h: "Abrir el pico y mirar con linterna; si hay placas en varias, veterinario." },
-  { c: 'resp', n: "Síndrome hipoxémico", a: "El galpón sin aire",
-    v: "Crestas azuladas, aves lentas, y con las semanas más ascitis y muertes: falta oxígeno de forma crónica.",
-    d: "El frío engaña: por no perder calor se cierra todo el galpón… y el aire se agota. Ventilación mínima es sagrada incluso en invierno.",
-    h: "Garantizar ventilación mínima SIEMPRE; revisar estufas que consumen oxígeno." },
-  { c: 'resp', n: "Falta de vitamina A", a: "Los ojos con lagañas de queso",
-    v: "Ojos hinchados con material blanco tipo queso, nódulos blancos en la garganta, aves pálidas y postura en el suelo.",
-    d: "La vitamina A cuida todas las \"mucosas\": sin ella, ojo y garganta fabrican costras. Alimento viejo o mal premezclado es el culpable clásico.",
-    h: "Corregir el alimento con el asesor; mejora en 1-2 semanas si se pilla a tiempo." },
-  { c: 'dig', n: "Tifoidea aviar", a: "La del hígado bronce",
-    v: "Aves ADULTAS decaídas con cresta pálida y diarrea amarillenta; muertes que gotean día tras día. Por dentro, hígado agrandado color bronce.",
-    d: "Es la hermana adulta de la pullorosis: misma familia Salmonella, pero ataca a las grandes. Se hereda por el huevo y se pasea con los ratones.",
-    h: "Laboratorio para confirmar; control de roedores y revisión del origen de las aves." },
-  { c: 'dig', n: "Infecciones paratíficas", a: "La salmonela viajera",
-    v: "En las aves casi no se nota (algún pollito con diarrea); el problema es que contamina huevos y carne sin dar señales.",
-    d: "Es la salmonela de las intoxicaciones de comida humana: el lote se ve sano y aun así puede estar repartiendo. Por eso existen los muestreos oficiales.",
-    h: "Higiene de huevos y nidos, agua clorada, control de roedores y moscas." },
-  { c: 'dig', n: "Gastritis necrótica", a: "El estómago quemado",
-    v: "Aves que comen menos, se atrasan y mueren salpicadas; por dentro, la molleja y el estómago glandular aparecen con la pared muerta.",
-    d: "Pariente de la enteritis necrótica (mismo Clostridium), pero ataca más arriba del tubo digestivo. Cama vieja y alimento alterado le abren la puerta.",
-    h: "Veterinario; renovar cama y revisar el alimento almacenado." },
-  { c: 'dig', n: "Colangiohepatitis", a: "El hígado amarillo del broiler",
-    v: "Broilers atrasados que no rinden; en faena aparecen hígados duros, amarillos y agrandados que se decomisan.",
-    d: "Bacterias del intestino suben por el conducto de la bilis y viven en el hígado. El galpón lo paga dos veces: menos peso y más decomiso.",
-    h: "Revisar salud intestinal (coccidiosis, cama) con el veterinario." },
-  { c: 'dig', n: "Espiroquetosis", a: "La fiebre de la garrapata",
-    v: "Aves con fiebre, somnolientas, con diarrea verdosa y cresta pálida; muertes en pocos días. Aparece con calor y donde hay garrapatas blandas escondidas en el gallinero.",
-    d: "La bacteria en espiral viaja dentro de la GARRAPATA del gallinero, que de día se esconde en grietas de madera y de noche pica. Sin garrapatas no hay espiroquetosis: la pelea es contra el bicho, no solo contra el microbio. Su prima intestinal, más discreta, da diarrea espumosa y roba postura en aves de piso.",
-    h: "Tratar las GRIETAS del galpón contra garrapatas y llamar al veterinario para las aves." },
-  { c: 'dig', n: "Tricomoniasis", a: "El queso de las palomas",
-    v: "Placas amarillas tipo queso en boca y buche que huelen mal; el ave traga con dolor y enflaquece. En gallinas es rara: la traen las palomas.",
-    d: "El parásito viaja en el agua que las palomas comparten con tus aves. Bebedero abierto al cielo = puerta de entrada.",
-    h: "Cerrar el acceso de palomas a agua y alimento; veterinario para las afectadas." },
-  { c: 'dig', n: "Hepatitis por cuerpos de inclusión", a: "El hígado pálido del pollito",
-    v: "Broilers de 3 a 6 semanas que mueren de golpe durante unos días; por dentro, hígados pálidos, amarillentos y con puntitos de sangre.",
-    d: "Es un adenovirus que se aprovecha de defensas bajas: casi siempre hay un Gumboro o una anemia infecciosa escondida detrás.",
-    h: "Veterinario; revisar el plan de vacunación completo del lote y de las madres." },
-  { c: 'dig', n: "Hepatitis y esplenomegalia (HSS)", a: "La de hígado y bazo grandes",
-    v: "Ponedoras con muertes salpicadas y postura 1-2% más baja sin causa clara; en necropsia, hígado y bazo agrandados con sangre.",
-    d: "La causa un virus pariente de la hepatitis E. Va y viene en ondas suaves: es de esas que solo el registro diario de mortalidad delata.",
-    h: "Laboratorio para confirmar; reforzar bioseguridad." },
-  { c: 'dig', n: "Proventriculitis (TVP)", a: "El estómago globo",
-    v: "Broilers desparejos que digieren mal (alimento entero en las heces); el estómago glandular se agranda tanto que en faena se rompe.",
-    d: "El proventrículo inflamado es fábrica de decomisos: la canal se contamina al romperse. Se nota semanas antes en las heces con alimento sin digerir.",
-    h: "Veterinario; revisar también micotoxinas del alimento, que inflaman lo mismo." },
-  { c: 'dig', n: "Infecciones por adenovirus", a: "La familia oportunista",
-    v: "Rara vez dan cara sola: aparecen sumadas a otra (hígados pálidos, molleja erosionada, postura baja) cuando las defensas andan bajas.",
-    d: "Muchas aves los cargan dormidos toda la vida; despiertan cuando Gumboro o el estrés bajan la guardia. Son el síntoma de otro problema.",
-    h: "Buscar con el veterinario la causa inmunosupresora de fondo." },
-  { c: 'dig', n: "Tuberculosis aviar", a: "La flaca crónica",
-    v: "Ave vieja (típico de traspatio) que enflaquece durante meses hasta quedar en el puro esternón, comiendo igual. Por dentro, nódulos duros en hígado e intestino.",
-    d: "La bacteria sobrevive AÑOS en el suelo del gallinero. Un patio con historia de tuberculosis queda marcado por mucho tiempo.",
-    h: "No tiene tratamiento práctico: sacrificio sanitario y no reutilizar ese suelo para aves jóvenes." },
-  { c: 'post', n: "Nefritis infecciosa aviar", a: "El riñón atacado",
-    v: "Lote joven que toma más agua y moja la cama, con muertes salpicadas; después pueden venir gota y cáscaras débiles.",
-    d: "Hay variantes del virus de la bronquitis que en vez de ir al pulmón van al RIÑÓN. El primer aviso no es la tos: es la cama mojada.",
-    h: "Veterinario; revisar qué cepa de bronquitis se está vacunando." },
-  { c: 'patas', n: "Sinovitis por Mycoplasma synoviae", a: "Las articulaciones calientes",
-    v: "Aves que cojean con garrones y plantas hinchadas, calientes y blandas; el lote se sienta más de lo normal.",
-    d: "Primo del micoplasma respiratorio, pero fanático de las articulaciones. También viene de la madre por el huevo.",
-    h: "Asesor/veterinario; comprar reemplazos certificados libres." },
-  { c: 'patas', n: "Artritis por Staphylococcus", a: "La cojera de las heridas",
-    v: "Cojera con articulaciones hinchadas y calientes días después de heridas, despique o vacunación con agujas sucias.",
-    d: "El estafilococo vive en la piel esperando una puerta: cualquier herida es su entrada al hueso y la articulación.",
-    h: "Veterinario; higiene en manejos con aguja y cama sin astillas ni alambres." },
-  { c: 'patas', n: "Artritis viral (reovirus)", a: "El tendón hinchado",
-    v: "Aves medianas con los tendones sobre el garrón hinchados y duros; algunas quedan cojas para siempre o se les corta el tendón.",
-    d: "El virus vive en el tendón. Hoy se controla vacunando a las reproductoras para que le pasen defensas al pollito.",
-    h: "Veterinario; revisar el estado vacunal del origen de los pollitos." },
-  { c: 'patas', n: "Ruptura del tendón gastrocnemio", a: "El tirón traicionero",
-    v: "Reproductora o ave pesada que de un salto queda coja, con la pantorrilla hinchada y de color verdoso a los días.",
-    d: "El tendón truena como cuerda de guitarra: casi siempre estaba debilitado antes por reovirus o estafilococo. El moretón verde es la firma.",
-    h: "No se repara en terreno: retiro de la afectada y revisar por qué el tendón estaba débil." },
-  { c: 'patas', n: "Discondroplasia tibial", a: "El cartílago crudo",
-    v: "Broilers con bulto duro bajo la rodilla y patas que se arquean; caminan poco y se atrasan.",
-    d: "El hueso creció tan rápido que el cartílago quedó \"crudo\", sin transformarse en hueso. Es el precio del crecimiento acelerado.",
-    h: "Revisar con el asesor genética, minerales y ritmo de engorde." },
-  { c: 'patas', n: "Falta de vitamina B2", a: "Los dedos enrollados",
-    v: "Pollitos que caminan sobre los garrones con los dedos doblados hacia adentro, como puños cerrados.",
-    d: "La riboflavina cuida los nervios de las patas: sin ella, los dedos se enrollan. Es de manual en dietas caseras sin premezcla.",
-    h: "Corregir el alimento ya: si se pilla temprano, muchos se recuperan." },
-  { c: 'piel', n: "Escarabajo de la cama", a: "El polizón de la cama",
-    v: "Escarabajos oscuros y larvas amarillas corriendo bajo comederos al levantar la cama; de noche muerden la piel de las aves.",
-    d: "No es solo asco: carga Marek, Salmonella y Gumboro de una crianza a la otra, y sus larvas se comen el aislante del galpón.",
-    h: "Control entre crianzas (vacío sanitario y tratamiento del piso); no apilar cama vieja al lado del galpón." },
-  { c: 'piel', n: "Hiperqueratosis", a: "Las escamas de rinoceronte",
-    v: "Patas y espolones con escamas engrosadas y ásperas, sin ácaros a la vista, típico de aves mayores.",
-    d: "A veces es solo edad; pero si hay costras blancas y polvillo, el ácaro albañil anda escondido debajo. Merece una mirada con lupa.",
-    h: "Diferenciar de patas escamosas; si hay grietas o sangrado, tratar como ácaro." },
-  { c: 'poll', n: "Infección por Pseudomonas", a: "La de la aguja sucia",
-    v: "Pollitos de días con cabeza y cuello hinchados y muertes rápidas, típicamente tras vacunación o desde una incubadora con higiene floja.",
-    d: "Esta bacteria ama la humedad: vive en jeringas mal lavadas, diluyentes vencidos y rincones mojados de la incubadora.",
-    h: "Higiene estricta de vacunación e incubación; veterinario." },
-  { c: 'poll', n: "Cloaca embarrada", a: "El pañal pegado",
-    v: "Pollitos con heces secas pegadas tapando la cloaca; se apretan entre ellos y pían. Si el tapón cierra del todo, mata.",
-    d: "Es un termómetro disfrazado: el pollito con FRÍO digiere mal y su cloaca se embarra. Cloacas sucias = revisar la temperatura de crianza, no solo limpiar.",
-    h: "Limpiar con paño tibio (sin arrancar), y subir la temperatura de la crianza hoy." },
-  { c: 'tox', n: "Intoxicación por ionóforos", a: "La borrachera del coccidiostato", urg: 1,
-    v: "Aves como borrachas: patas abiertas, alas caídas, no pueden pararse; aparece tras un cambio de alimento.",
-    d: "El coccidiostato del alimento (monensina y parientes) es remedio y veneno: dosis equivocada, o mezclado con ciertos antibióticos, tumba al lote.",
-    h: "Suspender el alimento sospechoso YA y llamar al asesor: revisar fórmula y medicaciones juntas." },
-  { c: 'tox', n: "Fusariotoxicosis", a: "La boca quemada",
-    v: "Costras y úlceras amarillas en los bordes del pico y dentro de la boca; comen menos y se atrasan; plumas feas.",
-    d: "La toxina del hongo Fusarium literalmente quema la mucosa al pasar. Viene en granos dañados por lluvia o mal secados.",
-    h: "Cambiar el lote de alimento; revisar de dónde vino el grano." },
-  { c: 'tox', n: "Intoxicación por selenio", a: "El error de premezcla", urg: 1,
-    v: "Muertes rápidas y parejas después de estrenar un alimento nuevo; a veces olor a ajo en el buche.",
-    d: "El selenio es vital en microgramos y letal en miligramos: un error de balanza en la premezcla convierte el alimento en veneno.",
-    h: "Suspender el alimento nuevo de inmediato; guardar muestra para análisis." },
-  { c: 'tox', n: "Intoxicación por gas de criadoras", a: "La mañana silenciosa", urg: 1,
-    v: "Amanecen pollitos muertos alrededor de la estufa a gas, sin más señales, tras una noche fría con todo cerrado.",
-    d: "Una criadora mal regulada suelta gases que pesan y se acumulan a la altura del pollito. El frío que obliga a cerrar el galpón arma la trampa.",
-    h: "Revisar y regular las criadoras; ventilación mínima aunque haga frío." },
-  { c: 'tox', n: "Hierba lapa en el grano", a: "La semilla pegajosa",
-    v: "Lote que come menos y rinde menos con un grano casero nuevo; en el grano se ven semillitas redondas y pegajosas.",
-    d: "La \"lapa\" o hierba de gallina se cosecha junto al cereal si el potrero estaba enmalezado. No es dramática, pero roba rendimiento callada.",
-    h: "Limpiar o cambiar el grano; avisar al proveedor." },
-  { c: 'tum', n: "Tumores: cómo orientarse", a: "El árbol de decisiones",
-    v: "Aves flacas con bultos internos que aparecen en la necropsia. Las enfermedades neoplásicas se distinguen sobre todo por la EDAD del ave.",
-    d: "Regla de campo: tumores + parálisis antes de los 4 meses huele a Marek; tumores después de los 4 meses, a leucosis. El laboratorio da el veredicto.",
-    h: "Anotar edad y señales de cada caso; con varios casos, necropsia con veterinario." },
-  { c: 'tum', n: "Leucosis linfoide", a: "La de las aves adultas",
-    v: "Ponedoras de más de 4 meses que enflaquecen con el abdomen abultado; por dentro, hígado y bazo con tumores blandos.",
-    d: "Se transmite de la madre por el huevo (al revés de Marek, que vuela en el polvillo). No hay vacuna: se erradica desde las reproductoras.",
-    h: "No tiene tratamiento; certificar el origen de las pollitas." },
-  { c: 'tum', n: "Mielocitomatosis", a: "Los tumores del hueso",
-    v: "Aves con bultos duros en la cabeza, el pecho o las patas, pegados al hueso.",
-    d: "Es de la familia de la leucosis (subgrupo J): golpeó fuerte a las líneas pesadas en los 90 hasta que se limpió desde la genética.",
-    h: "Sin tratamiento; hoy es rara si las reproductoras vienen certificadas." },
-  { c: 'tum', n: "Eritroblastosis", a: "La sangre enferma",
-    v: "Aves adultas pálidas o amarillentas, débiles, con el hígado grande; mueren anémicas.",
-    d: "El mismo grupo de virus de la leucosis, pero atacando la fábrica de sangre. Se confirma solo con laboratorio.",
-    h: "Sin tratamiento; control por origen de las aves." },
-  { c: 'tum', n: "Osteopetrosis", a: "Las canillas gruesas",
-    v: "Aves jóvenes con las canillas (huesos de la pata) engrosadas, calientes y duras como porra; caminan tiesas.",
-    d: "El virus hace crecer el hueso hacia afuera: la pata parece de ave prehistórica. Es la cara más visible de la familia leucosis.",
-    h: "Sin tratamiento; retirar afectadas y revisar el origen del lote." },
-  { c: 'tum', n: "Adenocarcinomatosis", a: "El abdomen duro de la vieja",
-    v: "Ponedora de edad con el abdomen duro y en postura de pingüino; adentro, tumores sembrados por todas las vísceras.",
-    d: "Nace en el ovario o el oviducto de gallinas mayores y se siembra por el abdomen. Es de las razones por las que los planteles renuevan por edad.",
-    h: "Sin tratamiento; retiro humanitario de la afectada." },
-  { c: 'tum', n: "Leiomioma del mesosalpinx", a: "El bulto inofensivo",
-    v: "Hallazgo de necropsia: una pelota lisa y firme colgando del ligamento del oviducto, en gallina que murió de OTRA cosa.",
-    d: "Es un tumor benigno del músculo liso: casi nunca molestó en vida. Se anota y se sigue buscando la causa real de la muerte.",
-    h: "Solo registrar; no cambia el manejo." },
-  { c: 'tum', n: "Colangioma", a: "El quiste del hígado",
-    v: "Hallazgo de necropsia: masas con líquido en el hígado, como racimos de burbujas.",
-    d: "Tumor benigno de los conductos de la bilis. Igual que el leiomioma: aparece, sorprende, y rara vez fue el asesino.",
-    h: "Solo registrar; buscar la causa real de la muerte." },
-  { c: 'tum', n: "Carcinoma de piel (DSCC)", a: "Los cráteres de la canal",
-    v: "En faena: cráteres o úlceras en la piel de broilers, donde nacen las plumas; decomiso de la zona.",
-    d: "Se descubre casi siempre en la planta, no en el galpón: la piel del folículo se transforma. Más frecuente cuando hubo daño de piel previo.",
-    h: "Cuidar la piel en crianza (cama seca, uñas, densidad) para no regalar decomisos." },
-  { c: 'pavos', n: "Enteritis hemorrágica del pavo", a: "La diarrea con sangre del pavo",
-    v: "Pavos de 6 a 12 semanas decaídos con diarrea oscura o con sangre franca; muertes durante una semana.",
-    d: "Virus propio del pavo que además baja defensas: lo que no mata él, lo remata la E. coli a los días. El segundo golpe es el peor.",
-    h: "Veterinario; vigilar la semana siguiente por infecciones secundarias." },
-  { c: 'pavos', n: "Enteritis del pavipollo (PEMS)", a: "El síndrome del pavito flaco",
-    v: "Pavipollos con diarrea, fríos, desparejos, que dejan de crecer y mueren; el lote se ve \"envejecido\".",
-    d: "Es un combo de virus y bacterias que se ceba en las primeras semanas. La higiene entre crianzas es la única muralla real.",
-    h: "Veterinario; extremar limpieza, temperatura y arranque." },
-  { c: 'pavos', n: "Impactación de molleja", a: "La molleja taponada",
-    v: "Pavos que comen y no avanzan, buche y molleja llenos de fibra dura como escobilla.",
-    d: "El pavo joven es aspiradora de cama y pasto duro: la molleja se llena de soga vegetal que no puede moler.",
-    h: "Controlar acceso a pasto fibroso y cama comestible en las primeras semanas." },
-  { c: 'pavos', n: "Corazón redondo del pavo", a: "El corazón agotado",
-    v: "Pavos jóvenes muertos sin aviso; por dentro, un corazón enorme, redondo y flácido.",
-    d: "El músculo del corazón se dilata hasta fallar. Tiene raíz genética y de manejo temprano; se ve en lotes de crecimiento fuerte.",
-    h: "Registrar casos y conversarlo con el proveedor de la genética." },
-  { c: 'pavos', n: "Ruptura de arteria renal", a: "El desangrado interno",
-    v: "Pavos machos grandes, aparentemente sanos, muertos con palidez extrema; en necropsia, un coágulo gigante junto al riñón.",
-    d: "Una arteria cede de golpe y el ave se desangra por dentro en minutos. Va de la mano con crecimiento rápido y presión alta.",
-    h: "Poco que hacer en terreno: registrar y moderar el empuje del engorde." },
-  { c: 'pavos', n: "Infección por Riemerella", a: "La septicemia del pato",
-    v: "Patos (y a veces pavos) jóvenes con torticolis, ojos legañosos y equilibrio perdido; muertes rápidas.",
-    d: "Es la gran septicemia de los patitos: entra por rasguños de las patas en pisos ásperos.",
-    h: "Veterinario; suavizar pisos y separar especies." },
-  { c: 'raras', n: "Amiloidosis", a: "La proteína pegajosa",
-    v: "Aves adultas con articulaciones hinchadas color caramelo y/o hígado grande y firme; enflaquecen despacio.",
-    d: "Tras meses de infecciones crónicas, el cuerpo fabrica una proteína que se pega en órganos y coyunturas como caramelo duro. Es la cicatriz de una guerra larga.",
-    h: "Sin tratamiento; atacar las infecciones crónicas de fondo del lote." },
-  { c: 'raras', n: "Miopatía pectoral profunda", a: "La pechuga verde",
-    v: "Se descubre en faena: el músculo profundo de la pechuga aparece verde y muerto. En vida no se nota nada.",
-    d: "Pasa en aves pesadas que aletearon fuerte: el músculo se hincha dentro de un estuche que no cede, se queda sin sangre y muere. Sustos y capturas bruscas son el gatillo.",
-    h: "Manejo tranquilo: capturas suaves, sin correteos ni sustos masivos." },
-  { c: 'raras', n: "Hiperandrogenismo del broiler", a: "El pollito gallo",
-    v: "Broilers jóvenes con crestas y espolones desarrollados como de gallo adulto.",
-    d: "Una curiosidad hormonal: testosterona antes de tiempo. Llama la atención en la manga, pero rara vez significa enfermedad.",
-    h: "Solo registrar si son muchos y comentarlo con el proveedor." },
-  { c: 'raras', n: "Diverticulum de Meckel", a: "El recuerdo del huevo",
-    v: "Hallazgo de necropsia: un dedito ciego colgando a mitad del intestino delgado.",
-    d: "Es el resto del cordón que unía al embrión con la yema: un recuerdo de cuando vivía dentro del huevo. Normal, salvo que esté inflamado.",
-    h: "Nada que hacer: saberlo evita sustos en la necropsia." },
-  { c: 'raras', n: "Invaginación intestinal", a: "El catalejo",
-    v: "Ave muerta con dolor previo; en necropsia, un tramo de intestino metido dentro del siguiente, como catalejo plegado.",
-    d: "Sucede cuando el intestino se mueve con violencia: diarreas fuertes o parásitos lo hacen \"tragarse a sí mismo\".",
-    h: "Es consecuencia: buscar la diarrea o los parásitos que lo provocaron." },
-  { c: 'raras', n: "Vólvulo", a: "La manguera torcida",
-    v: "Muerte individual súbita; en necropsia, un tramo de intestino torcido sobre sí mismo, morado y lleno de gas.",
-    d: "Como una manguera con una vuelta: nada pasa y el tejido muere en horas. Mala suerte anatómica más intestino pesado.",
-    h: "Caso individual: registrar; si se repite, revisar dieta y motilidad con el veterinario." },
-  { c: 'raras', n: "Enfisema subcutáneo", a: "El globo bajo la piel",
-    v: "Un ave con un bulto blando que cruje como bolsa de nylon al tocarlo: aire bajo la piel.",
-    d: "Un saco aéreo roto (golpe, manejo brusco) infla al ave como globo por dentro. Impresiona más de lo que es.",
-    h: "El veterinario lo drena con facilidad; evitar capturas bruscas." },
-  { c: 'raras', n: "Síndrome de anasarca", a: "El pollito de agua",
-    v: "Pollitos o embriones hinchados de líquido bajo la piel, pesados y blandos; la mayoría no nace o muere temprano.",
-    d: "Falla de incubación (temperatura, humedad, ventilación del nacedero) o del estado de las reproductoras. El pollito \"esponja\" es un mensaje de la incubadora.",
-    h: "Si se repite, auditar la incubadora y la nutrición de las madres." },
-  { c: 'raras', n: "Oviducto derecho persistente", a: "El quiste de la ponedora",
-    v: "Hallazgo de necropsia: una bolsa con líquido junto al oviducto de una gallina.",
-    d: "Las aves nacen con dos oviductos pero usan solo el izquierdo; a veces el derecho no se borra y queda como quiste. Casi nunca molesta.",
-    h: "Solo registrar; no cambia el manejo." },
-  { c: 'raras', n: "Anoftalmia y malformaciones", a: "Los sin ojos",
-    v: "Pollitos que nacen sin uno o ambos ojos, o con el cráneo deforme.",
-    d: "Se decide en los primeros días de incubación: temperatura desbocada o genética. El pollito lo cuenta; la incubadora es la responsable.",
-    h: "Si aparecen varios por nacida, auditar la máquina y avisar al proveedor de huevo fértil." },
-  { c: 'raras', n: "Cavidades corporales abiertas", a: "El nacido incompleto",
-    v: "Pollitos que nacen con el abdomen sin cerrar y vísceras expuestas; no sobreviven.",
-    d: "Otra falla de incubación temprana. Uno aislado es azar; varios son la incubadora hablando.",
-    h: "Retiro humanitario inmediato; auditar incubación si se repite." },
-  { c: 'raras', n: "Polipodia", a: "El pollito con patas de más",
-    v: "Pollito que nace con una pata extra o dedos duplicados.",
-    d: "Rareza genética o de los primeros días de incubación. Es más foto curiosa que problema de plantel.",
-    h: "Registrar; si se repite en la misma línea, avisar al proveedor." },
-];
-
-const GUIA_QUIZ = [
-  { q: 'Amanecen gallinas gordas muertas sin señales previas y es otoño. ¿Primer sospechoso?', o: ['Cólera aviar', 'Falta de vitaminas', 'Ácaro rojo'], r: 0, e: 'El cólera mata súbito y ama el clima cambiante de otoño. Las vitaminas y los ácaros desgastan de a poco.' },
-  { q: '¿Dónde buscas al ácaro rojo durante el día?', o: ['Entre las plumas', 'En las grietas de perchas y nidos', 'En el alimento'], r: 1, e: 'De día se esconde en las grietas; de noche sale a chupar sangre. Por eso se trata el galpón, no solo el ave.' },
-  { q: 'Heces con sangre y aves pálidas y somnolientas:', o: ['Coccidiosis', 'Viruela aviar', 'Gota'], r: 0, e: 'Sangre en heces + palidez = el ladrón de sangre. La cama húmeda lo multiplica.' },
-  { q: 'Ave joven con una pata adelante y otra atrás, como espagat:', o: ['Raquitismo', 'Marek', 'Golpe de calor'], r: 1, e: 'La parálisis en espagat es la firma de Marek. Se previene vacunando el primer día de vida.' },
-  { q: 'Estornudos en todo el galpón y semanas después huevos arrugados:', o: ['Bronquitis infecciosa', 'Botulismo', 'Piojos'], r: 0, e: 'El arruga-huevos: contagia a todas en días y daña la fábrica de cáscara.' },
-  { q: 'Cuellos torcidos, parálisis y mortalidad alta. ¿Qué haces PRIMERO?', o: ['Esperar unos días a ver', 'Aislar y llamar al veterinario YA', 'Cambiar el alimento'], r: 1, e: 'Newcastle e influenza son de aviso inmediato: cada hora cuenta y son de declaración obligatoria.' },
-  { q: 'Patas con costras negras en las plantas. ¿Qué está gritando el galpón?', o: ['Cama húmeda', 'Falta de sal', 'Exceso de sol'], r: 0, e: 'La pododermatitis es el medidor de humedad más honesto: patas sanas = cama seca.' },
-  { q: '¿Cuál de estas la transmiten los zancudos?', o: ['Viruela aviar', 'Coriza', 'Coccidiosis'], r: 0, e: 'Verano con mosquitos = temporada de viruela. Agua estancada es su aliada.' },
-  { q: 'El dato que mueve el semáforo de AviCount todos los días:', o: ['El peso del alimento', 'La mortalidad registrada', 'La hora de la foto'], r: 1, e: 'Sin mortalidad diaria registrada (aunque sea 0), la app queda ciega y el semáforo no avisa.' },
-  { q: 'Una cloaca picoteada y sangrando:', o: ['Se cura sola', 'Retirar el ave YA y bajar la luz', 'Subir la luz para vigilar mejor'], r: 1, e: 'Lo rojo llama al picoteo en cadena. Retirar a tiempo corta el efecto dominó.' },
-  { q: 'Tumores en un ave de 6 meses, sin parálisis ni ojos grises:', o: ['Marek', 'Leucosis linfoide', 'Gumboro'], r: 1, e: 'Regla de edad: Marek pega antes de los 4 meses y toca nervios; la leucosis llega después, por el huevo de la madre.' },
-  { q: 'Pollitos con la cloaca tapada por heces pegadas. ¿Qué revisas primero?', o: ['La temperatura de la crianza', 'El color del alimento', 'La luz'], r: 0, e: 'La cloaca embarrada es un termómetro disfrazado: pollito con frío digiere mal. Limpiar tibio y abrigar.' },
-  { q: 'Aves como borrachas, patas abiertas, justo tras estrenar alimento:', o: ['Intoxicación por ionóforos', 'Viruela aviar', 'Coriza'], r: 0, e: 'El coccidiostato en dosis errada (o mezclado con ciertos antibióticos) tumba al lote: suspender ese alimento YA.' },
-  { q: '¿Cuál puede contagiar a las PERSONAS por el polvillo?', o: ['Clamidiosis', 'Raquitismo', 'Discondroplasia'], r: 0, e: 'La clamidiosis (psitacosis) da fiebre tipo gripe: mascarilla para manejar aves sospechosas.' },
-  { q: 'Escarabajos oscuros corriendo bajo los comederos:', o: ['Inofensivos, hasta limpian', 'Plaga: cargan enfermedades y comen el aislante', 'Solo molestan en verano'], r: 1, e: 'El escarabajo de la cama pasea Marek, Salmonella y Gumboro entre crianzas, y sus larvas mastican el galpón.' },
-];
-
-function guiaEstado() {
-  if (!state.guia) state.guia = { cat: '', busca: '', quiz: null };
-  return state.guia;
-}
-
-function guiaBuscar(v) { guiaEstado().busca = v; pintarGuiaLista(); }
-function guiaCat(id) { const g = guiaEstado(); g.cat = g.cat === id ? '' : id; pintarGuiaLista(); }
-
-function sinTildes(s) { return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
-
-function pintarGuiaLista() {
-  const g = guiaEstado();
-  const cont = document.getElementById('guiaLista');
-  const chips = document.getElementById('guiaChips');
-  if (!cont) return;
-  if (chips) chips.querySelectorAll('button').forEach(b => {
-    b.style.background = b.dataset.cat === g.cat ? 'var(--accent)' : 'var(--surface-1)';
-    b.style.color = b.dataset.cat === g.cat ? 'var(--accent-ink)' : 'var(--ink-1)';
-  });
-  const filtro = sinTildes(g.busca.trim());
-  const lista = GUIA.filter(e =>
-    (!g.cat || e.c === g.cat) &&
-    (!filtro || sinTildes(e.n + ' ' + e.a + ' ' + e.v + ' ' + e.d + ' ' + e.h).includes(filtro)));
-  const porCat = {};
-  for (const e of lista) (porCat[e.c] = porCat[e.c] || []).push(e);
-  cont.innerHTML = GUIA_CATS.filter(c => porCat[c.id]).map(c => `
-    <h2 class="sec">${c.ic} ${c.t}</h2>
-    ${porCat[c.id].map(e => `
-      <div class="card" data-guia>
-        <div class="row" style="align-items:flex-start">
-          <div><h3>${e.n}</h3><div class="mut">"${e.a}"</div></div>
-          <div style="text-align:right;flex-shrink:0">
-            ${e.urg ? '<span class="status crit">Vet YA</span>' : ''}
-            ${e.dob ? '<div class="mut" style="font-size:10.5px;margin-top:3px">DECLARACIÓN<br>OBLIGATORIA</div>' : ''}
+        <div class="bar-row" aria-hidden="true">
+          <span class="bar-lbl">Desviación</span>
+          <div class="bar-track"><span class="zero"></span>
+            ${e.d != null ? `<span class="bar" style="background:${col};width:${w}%;${e.d < 0 ? 'right:50%;border-radius:4px 0 0 4px;' : 'left:50%;'}"></span>` : ''}
           </div>
+          <span class="bar-val">${e.d != null ? (e.d > 0 ? '+' : '') + e.d.toFixed(1) + '%' : '—'}</span>
         </div>
-        <div class="sub" style="margin-top:6px"><b>Lo que ves:</b> ${e.v}</div>
-        <div class="sub" style="margin-top:6px;background:color-mix(in srgb, var(--accent) 7%, transparent);border-radius:8px;padding:7px 9px">💡 <b>El dato:</b> ${e.d}</div>
-        <div class="sub" style="margin-top:6px"><b>Qué hacer:</b> ${e.h}</div>
-      </div>`).join('')}
-  `).join('') || '<div class="mut" style="padding:14px 2px">Nada con ese nombre. Prueba con otra palabra (ej: "sangre", "cojera", "huevo").</div>';
-}
+        <div class="mut" style="margin-top:6px">${e.s ? `Último conteo: ${fecha(e.s.cerrada_at)}${e.vencido ? ` · <b style="color:var(--ink-1)">⏱ ${e.dias} días</b>` : ''}` : 'Sin conteos aún'} · ${g.num_zonas} zonas</div>
+      </div>`;
+    }).join('') || '<div class="card"><div class="mut">Agrega galpones en Ajustes para empezar.</div></div>'}
 
-function guiaQuiz(resp) {
-  const g = guiaEstado();
-  if (!g.quiz) g.quiz = { i: 0, pts: 0, resp: null };
-  const q = g.quiz;
-  if (resp != null && q.resp == null) {
-    q.resp = resp;
-    if (resp === GUIA_QUIZ[q.i].r) q.pts++;
-  } else if (resp == null && q.resp != null) {
-    q.i++; q.resp = null;
-    if (q.i >= GUIA_QUIZ.length) {
-      const mejor = LS.get('quizMejor', 0);
-      if (q.pts > mejor) LS.set('quizMejor', q.pts);
-    }
-  }
-  pintarQuiz();
-}
-
-function guiaQuizReset() { guiaEstado().quiz = null; pintarQuiz(); }
-
-function pintarQuiz() {
-  const el = document.getElementById('guiaQuiz');
-  if (!el) return;
-  const q = guiaEstado().quiz;
-  const mejor = LS.get('quizMejor', 0);
-  if (!q) {
-    el.innerHTML = `
-      <h3>🎯 Ponte a prueba</h3>
-      <div class="sub" style="margin:4px 0 10px">${GUIA_QUIZ.length} preguntas de galpón real. ${mejor ? `Tu mejor marca: <b>${mejor}/${GUIA_QUIZ.length}</b>.` : 'Sin miedo: nadie mira.'}</div>
-      <button class="btn small" onclick="guiaQuiz()">Empezar el desafío</button>`;
-    return;
-  }
-  if (q.i >= GUIA_QUIZ.length) {
-    const tot = GUIA_QUIZ.length;
-    const msj = q.pts >= tot - 1 ? '🏆 Nivel veterinario de campo. El galpón está en buenas manos.'
-      : q.pts >= Math.ceil(tot * 0.7) ? '💪 Muy bien: se nota la calle (de tierra).'
-      : q.pts >= Math.ceil(tot * 0.5) ? '👍 Buena base. Una repasada a la guía y quedas de experto.'
-      : '🐣 Todos empezamos así: date una vuelta por la guía y reintenta.';
-    el.innerHTML = `
-      <h3>🎯 Resultado: ${q.pts}/${tot}</h3>
-      <div class="sub" style="margin:6px 0 10px">${msj}</div>
-      <button class="btn small secondary" onclick="guiaQuizReset()">Jugar de nuevo</button>`;
-    return;
-  }
-  const p = GUIA_QUIZ[q.i];
-  el.innerHTML = `
-    <div class="row"><h3>🎯 Pregunta ${q.i + 1} de ${GUIA_QUIZ.length}</h3><span class="mut">${q.pts} pts</span></div>
-    <div class="sub" style="margin:8px 0 10px;font-size:14px">${p.q}</div>
-    ${p.o.map((o, i) => {
-      let estilo = '';
-      if (q.resp != null) {
-        if (i === p.r) estilo = 'background:color-mix(in srgb, var(--good) 18%, transparent);border-color:var(--good)';
-        else if (i === q.resp) estilo = 'background:color-mix(in srgb, var(--critical) 14%, transparent);border-color:var(--critical)';
-      }
-      return `<button class="btn small secondary" style="margin-bottom:8px;text-align:left;${estilo}" ${q.resp == null ? `onclick="guiaQuiz(${i})"` : 'disabled'}>${q.resp != null && i === p.r ? '✓ ' : ''}${o}</button>`;
-    }).join('')}
-    ${q.resp != null ? `
-      <div class="sub" style="margin:4px 0 10px">${q.resp === p.r ? '¡Correcto!' : 'Casi.'} ${p.e}</div>
-      <button class="btn small" onclick="guiaQuiz()">${q.i + 1 >= GUIA_QUIZ.length ? 'Ver resultado' : 'Siguiente ›'}</button>` : ''}
+    <a class="xapp" href="https://juanpablobolados.github.io/avicount/salud/">
+      <div class="card">
+        <div style="display:flex;align-items:center"><span class="applogo" style="background:#0d9488">A+</span>
+        <div><b style="font-size:14px">Sanidad y mortalidad</b><div class="mut">Semáforo diario, registro de mortalidad y guía — en AviSalud</div></div></div>
+        <span style="color:var(--accent);font-size:20px">›</span>
+      </div>
+    </a>
+    <button class="btn" onclick="go('conteo')" style="margin-top:2px">Iniciar conteo</button>
   `;
-}
-
-function viewGuia() {
-  const g = guiaEstado();
-  $('#main').innerHTML = `
-    <button class="back" onclick="go('galpones')">‹ Volver</button>
-    <h2 class="sec">Guía de terreno AviCount</h2>
-    <div class="hint">Los <b>${GUIA.length} males del galpón</b> contados en simple: cómo se ven, el dato
-    para no olvidarlos y qué hacer. La app te dice <b>a qué galpón entrar</b>; esta guía, <b>qué mirar adentro</b>.
-    El diagnóstico final siempre es del veterinario. Regla de oro: <b>mortalidad registrada todos los días</b>, aunque sea 0.</div>
-    <input type="text" id="guiaBusca" placeholder="🔍 Busca por señal: sangre, cojera, huevo, jadeo…" value="${esc(g.busca)}" oninput="guiaBuscar(this.value)" style="margin:2px 0 10px">
-    <div id="guiaChips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch">
-      ${GUIA_CATS.map(c => `<button data-cat="${c.id}" onclick="guiaCat('${c.id}')" style="flex-shrink:0;border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12px;font-weight:600;background:var(--surface-1);color:var(--ink-1);cursor:pointer;font-family:inherit">${c.ic} ${c.t}</button>`).join('')}
-    </div>
-    <div class="card" id="guiaQuiz" style="margin-top:8px"></div>
-    <div id="guiaLista"></div>
-    <div class="mut" style="margin:4px 0 14px">Guía propia de AviCount, escrita para este equipo. Toca una categoría para filtrar o busca por lo que estás viendo.</div>
-  `;
-  pintarGuiaLista();
-  pintarQuiz();
 }
 
 /* ---------- Elegir método ---------- */
@@ -1823,7 +1208,6 @@ function viewAjustes() {
   const cola = LS.get('cola', []);
   const descartados = LS.get('descartados', []);
   $('#main').innerHTML = `
-    <button class="back" onclick="go('guia')" style="margin-bottom:2px">📖 Guía de terreno (señales y enfermedades) ›</button>
     <h2 class="sec">Galpones</h2>
     <div class="card">
       ${state.galpones.map(g => `<div class="list-item row">
