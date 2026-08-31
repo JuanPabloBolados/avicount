@@ -133,7 +133,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const APP_VERSION = 'v1.6.1 · 31-ago-2026';
+const APP_VERSION = 'v1.6.2 · 31-ago-2026';
 
 // Proyecto propio (la clave publishable es pública por diseño; los datos
 // están protegidos por RLS y solo se accede vía la API con credenciales).
@@ -747,7 +747,7 @@ const GUIA = [
 
   // 🥚 Postura y huevos
   { c: 'post', n: 'Síndrome de caída de la postura (EDS-76)', a: 'El ladrón de cáscaras',
-    v: 'La postura se derrumba sin aves enfermas a la vista; huevos sin cáscara, con cáscara de papel o como lija.',
+    v: 'La postura se derrumba sin aves enfermas a la vista; huevos pálidos, de cáscara fina o blanda, o sin cáscara. Ojo: la clara y la yema se ven normales, y el huevo rugoso como lija NO es de esta: ese es firma de bronquitis.',
     d: 'Este virus entró al mundo por una vacuna contaminada hace décadas... y hoy se previene precisamente vacunando. Ironías de la avicultura.',
     h: 'Antes de pensar en virus: revisar agua, horas de luz y calcio. Luego veterinario.' },
   { c: 'post', n: 'Fatiga de la ponedora en jaula', a: 'Los huesos de vidrio',
@@ -857,10 +857,10 @@ const GUIA = [
     v: "Broilers atrasados que no rinden; en faena aparecen hígados duros, amarillos y agrandados que se decomisan.",
     d: "Bacterias del intestino suben por el conducto de la bilis y viven en el hígado. El galpón lo paga dos veces: menos peso y más decomiso.",
     h: "Revisar salud intestinal (coccidiosis, cama) con el veterinario." },
-  { c: 'dig', n: "Espiroquetosis intestinal", a: "La diarrea espumosa",
-    v: "Diarrea mostaza con espuma en ponedoras de piso, huevos con la cáscara manchada de heces y postura que baja de a poco.",
-    d: "La bacteria en espiral vive en gallineros de piso y se ceba con el estrés. No mata en masa: roba huevos en silencio, semana tras semana.",
-    h: "Laboratorio para confirmar; secar cama y ordenar densidad." },
+  { c: 'dig', n: "Espiroquetosis", a: "La fiebre de la garrapata",
+    v: "Aves con fiebre, somnolientas, con diarrea verdosa y cresta pálida; muertes en pocos días. Aparece con calor y donde hay garrapatas blandas escondidas en el gallinero.",
+    d: "La bacteria en espiral viaja dentro de la GARRAPATA del gallinero, que de día se esconde en grietas de madera y de noche pica. Sin garrapatas no hay espiroquetosis: la pelea es contra el bicho, no solo contra el microbio. Su prima intestinal, más discreta, da diarrea espumosa y roba postura en aves de piso.",
+    h: "Tratar las GRIETAS del galpón contra garrapatas y llamar al veterinario para las aves." },
   { c: 'dig', n: "Tricomoniasis", a: "El queso de las palomas",
     v: "Placas amarillas tipo queso en boca y buche que huelen mal; el ave traga con dolor y enflaquece. En gallinas es rara: la traen las palomas.",
     d: "El parásito viaja en el agua que las palomas comparten con tus aves. Bebedero abierto al cielo = puerta de entrada.",
@@ -1099,7 +1099,7 @@ function pintarGuiaLista() {
   const filtro = sinTildes(g.busca.trim());
   const lista = GUIA.filter(e =>
     (!g.cat || e.c === g.cat) &&
-    (!filtro || sinTildes(e.n + ' ' + e.a + ' ' + e.v + ' ' + e.d).includes(filtro)));
+    (!filtro || sinTildes(e.n + ' ' + e.a + ' ' + e.v + ' ' + e.d + ' ' + e.h).includes(filtro)));
   const porCat = {};
   for (const e of lista) (porCat[e.c] = porCat[e.c] || []).push(e);
   cont.innerHTML = GUIA_CATS.filter(c => porCat[c.id]).map(c => `
@@ -1147,7 +1147,7 @@ function pintarQuiz() {
   if (!q) {
     el.innerHTML = `
       <h3>🎯 Ponte a prueba</h3>
-      <div class="sub" style="margin:4px 0 10px">${GUIA_QUIZ.length} preguntas de galpón real. ${mejor ? `Tu mejor marca: <b>${mejor}/10</b>.` : 'Sin miedo: nadie mira.'}</div>
+      <div class="sub" style="margin:4px 0 10px">${GUIA_QUIZ.length} preguntas de galpón real. ${mejor ? `Tu mejor marca: <b>${mejor}/${GUIA_QUIZ.length}</b>.` : 'Sin miedo: nadie mira.'}</div>
       <button class="btn small" onclick="guiaQuiz()">Empezar el desafío</button>`;
     return;
   }
